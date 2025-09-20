@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Aviso News on rork.com",
-    "slug": "aviso-news-rork-com",
+    "name": "Aviso News",
+    "slug": "aviso-news",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.aviso-news-rork-com",
+      "bundleIdentifier": "app.aviso-news",
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
@@ -28,7 +28,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.aviso-news-rork-com",
+      "package": "app.aviso-news",
       "permissions": [
         "RECORD_AUDIO"
       ]
