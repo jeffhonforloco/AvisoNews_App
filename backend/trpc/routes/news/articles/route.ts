@@ -2,9 +2,26 @@ import { z } from "zod";
 import { publicProcedure } from "@/backend/trpc/create-context";
 import { mockArticles } from "@/mocks/articles";
 import { Article } from "@/types/news";
+import { initializeNewsStore } from "@/backend/services/newsInitializer";
 
 // In-memory store (in production, this would be a database)
-let articlesStore: Article[] = [...mockArticles];
+let articlesStore: Article[] = [];
+let initializationPromise: Promise<void> | null = null;
+
+// Initialize with real news on first access
+async function ensureInitialized(): Promise<void> {
+  if (articlesStore.length === 0 && !initializationPromise) {
+    initializationPromise = initializeNewsStore();
+    await initializationPromise;
+  } else if (initializationPromise) {
+    await initializationPromise;
+  }
+  
+  // If still empty after initialization, use mock data as fallback
+  if (articlesStore.length === 0) {
+    articlesStore = [...mockArticles];
+  }
+}
 
 // Export getter function for use in other modules
 export function getArticlesStore(): Article[] {
@@ -28,7 +45,9 @@ export const getArticles = publicProcedure
       })
       .optional()
   )
-  .query(({ input }) => {
+  .query(async ({ input }) => {
+    // Ensure news is initialized before querying
+    await ensureInitialized();
     let filtered = [...articlesStore];
 
     // Filter by category
@@ -73,7 +92,8 @@ export const getArticles = publicProcedure
 
 export const getArticleById = publicProcedure
   .input(z.object({ id: z.string() }))
-  .query(({ input }) => {
+  .query(async ({ input }) => {
+    await ensureInitialized();
     const article = articlesStore.find((a) => a.id === input.id);
     if (!article) {
       throw new Error("Article not found");
@@ -100,7 +120,8 @@ export const searchArticles = publicProcedure
       offset: z.number().min(0).optional().default(0),
     })
   )
-  .query(({ input }) => {
+  .query(async ({ input }) => {
+    await ensureInitialized();
     const searchTerm = input.query.toLowerCase();
     const filtered = articlesStore.filter(
       (article) =>
@@ -127,7 +148,8 @@ export const getRelatedArticles = publicProcedure
       limit: z.number().min(1).max(10).optional().default(3),
     })
   )
-  .query(({ input }) => {
+  .query(async ({ input }) => {
+    await ensureInitialized();
     const article = articlesStore.find((a) => a.id === input.articleId);
     if (!article) {
       return { articles: [] };

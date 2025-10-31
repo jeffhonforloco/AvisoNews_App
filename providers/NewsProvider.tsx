@@ -52,9 +52,8 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
     [incrementViewMutation]
   );
 
-  // Fallback to mock data if API fails
-  const rawArticles =
-    articlesQuery.data?.articles || (articlesQuery.error ? mockArticles : []);
+  // Use real articles from API (no mock fallback - let initialization handle it)
+  const rawArticles = articlesQuery.data?.articles || [];
   
   // Sort articles by newest first (using importedAt or publishedAt)
   const articles = sortArticlesByNewest(rawArticles);

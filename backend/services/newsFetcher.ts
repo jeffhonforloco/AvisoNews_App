@@ -189,21 +189,34 @@ export async function fetchFromRSS(config: NewsFetcherConfig): Promise<Article[]
  */
 export async function fetchFromGoogleNews(config: NewsFetcherConfig): Promise<Article[]> {
   try {
+    // Build Google News RSS URL
     const params = new URLSearchParams();
     
-    if (config.category) {
-      params.append("topic", config.category);
+    // Map our categories to Google News topics
+    const topicMap: Record<string, string> = {
+      technology: "TECHNOLOGY",
+      business: "BUSINESS",
+      world: "WORLD",
+      science: "SCIENCE",
+      health: "HEALTH",
+      sports: "SPORTS",
+      entertainment: "ENTERTAINMENT",
+      general: "WORLD", // Default to world news
+    };
+    
+    if (config.category && topicMap[config.category.toLowerCase()]) {
+      params.append("topic", topicMap[config.category.toLowerCase()]);
     }
+    
     if (config.keywords && config.keywords.length > 0) {
       params.append("q", config.keywords.join(" "));
     }
-    if (config.language) {
-      params.append("hl", config.language);
-    }
-    if (config.country) {
-      params.append("gl", config.country);
-    }
+    
+    params.append("hl", config.language || "en");
+    params.append("gl", config.country || "US");
+    params.append("ceid", `${config.country || "US"}:${config.language || "en"}`);
 
+    // Use the RSS endpoint
     const feedUrl = `https://news.google.com/rss${params.toString() ? `?${params.toString()}` : ""}`;
     
     return await fetchFromRSS({
@@ -212,7 +225,17 @@ export async function fetchFromGoogleNews(config: NewsFetcherConfig): Promise<Ar
     });
   } catch (error) {
     console.error("Error fetching from Google News:", error);
-    return [];
+    // Try a simpler fallback
+    try {
+      const fallbackUrl = `https://news.google.com/rss?hl=${config.language || "en"}&gl=${config.country || "US"}&ceid=${config.country || "US"}:${config.language || "en"}`;
+      return await fetchFromRSS({
+        ...config,
+        feedUrl: fallbackUrl,
+      });
+    } catch (fallbackError) {
+      console.error("Fallback Google News fetch also failed:", fallbackError);
+      return [];
+    }
   }
 }
 
