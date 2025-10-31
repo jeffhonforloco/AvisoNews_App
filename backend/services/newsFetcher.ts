@@ -390,44 +390,92 @@ export async function fetchNews(config: NewsFetcherConfig): Promise<Article[]> {
 function parseRSSFeed(xmlText: string): RSSFeedItem[] {
   const items: RSSFeedItem[] = [];
   
+  if (!xmlText || xmlText.length === 0) {
+    console.error("❌ Empty XML text received");
+    return items;
+  }
+  
   try {
-    // Simple regex-based parsing (for production, use proper XML parser)
-    const itemMatches = xmlText.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/gi);
+    // Try multiple patterns to match RSS items (different RSS formats)
+    // Pattern 1: Standard RSS <item> tags
+    let itemMatches = Array.from(xmlText.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/gi));
+    
+    // Pattern 2: Atom feed <entry> tags (if RSS pattern didn't work)
+    if (itemMatches.length === 0) {
+      itemMatches = Array.from(xmlText.matchAll(/<entry[^>]*>([\s\S]*?)<\/entry>/gi));
+    }
+    
+    // Pattern 3: Try without angle brackets (in case of encoding issues)
+    if (itemMatches.length === 0) {
+      itemMatches = Array.from(xmlText.matchAll(/item[^>]*>([\s\S]*?)<\/item/gi));
+    }
+    
+    console.log(`📄 Found ${itemMatches.length} potential items in RSS feed`);
     
     for (const match of itemMatches) {
       const itemContent = match[1];
       
-      const title = extractXMLTag(itemContent, "title");
-      const description = extractXMLTag(itemContent, "description") || extractXMLTag(itemContent, "content:encoded");
-      const link = extractXMLTag(itemContent, "link");
-      const pubDate = extractXMLTag(itemContent, "pubDate") || extractXMLTag(itemContent, "published");
+      const title = extractXMLTag(itemContent, "title") || extractXMLTag(itemContent, "title", true);
+      const description = extractXMLTag(itemContent, "description") || 
+                         extractXMLTag(itemContent, "content:encoded") ||
+                         extractXMLTag(itemContent, "summary");
+      const link = extractXMLTag(itemContent, "link") || extractXMLTag(itemContent, "link", true);
+      const pubDate = extractXMLTag(itemContent, "pubDate") || 
+                     extractXMLTag(itemContent, "published") ||
+                     extractXMLTag(itemContent, "updated");
       
-      // Extract image
+      // Extract image - try multiple patterns
+      let imageUrl: string | undefined;
       const enclosureMatch = itemContent.match(/<enclosure[^>]*url=["']([^"']+)["']/i);
       const mediaMatch = itemContent.match(/<media:content[^>]*url=["']([^"']+)["']/i);
+      const mediaThumbMatch = itemContent.match(/<media:thumbnail[^>]*url=["']([^"']+)["']/i);
+      
+      if (enclosureMatch) imageUrl = enclosureMatch[1];
+      else if (mediaMatch) imageUrl = mediaMatch[1];
+      else if (mediaThumbMatch) imageUrl = mediaThumbMatch[1];
       
       if (title && link) {
         items.push({
           title: cleanHTML(title),
           description: cleanHTML(description || ""),
-          link,
+          link: cleanHTML(link),
           pubDate: pubDate || new Date().toISOString(),
-          enclosure: enclosureMatch ? { url: enclosureMatch[1] } : undefined,
-          media: mediaMatch ? { content: { url: mediaMatch[1] } } : undefined,
+          enclosure: imageUrl ? { url: imageUrl } : undefined,
+          media: imageUrl ? { content: { url: imageUrl } } : undefined,
         });
+      } else {
+        console.warn(`⚠️ Skipping item: missing title or link. Title: ${!!title}, Link: ${!!link}`);
       }
     }
+    
+    console.log(`✅ Successfully parsed ${items.length} valid items`);
   } catch (error) {
-    console.error("Error parsing RSS feed:", error);
+    console.error("❌ Error parsing RSS feed:", error);
+    console.error("Error details:", error instanceof Error ? error.message : String(error));
   }
 
   return items;
 }
 
-function extractXMLTag(content: string, tagName: string): string | null {
-  const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, "i");
-  const match = content.match(regex);
-  return match ? match[1].trim() : null;
+function extractXMLTag(content: string, tagName: string, cdata: boolean = false): string | null {
+  // Try standard XML tag pattern
+  let regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, "i");
+  let match = content.match(regex);
+  
+  if (!match && cdata) {
+    // Try CDATA pattern
+    regex = new RegExp(`<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tagName}>`, "i");
+    match = content.match(regex);
+  }
+  
+  if (!match) {
+    // Try self-closing tag pattern
+    regex = new RegExp(`<${tagName}[^>]*/>`, "i");
+    match = content.match(regex);
+    if (match) return "";
+  }
+  
+  return match ? match[1]?.trim() || "" : null;
 }
 
 function cleanHTML(text: string): string {

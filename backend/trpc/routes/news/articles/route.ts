@@ -10,9 +10,9 @@ let articlesStore: Article[] = [...mockArticles];
 let initializationPromise: Promise<void> | null = null;
 let initializationStarted = false;
 
-// Initialize with real news on first access (runs in background, doesn't block)
+// Initialize with real news on first access - NOW BLOCKS until real data is loaded
 async function ensureInitialized(): Promise<void> {
-  // If already initialized or in progress, just wait for it
+  // If already initialized or in progress, wait for it
   if (initializationStarted && initializationPromise) {
     try {
       await initializationPromise;
@@ -22,34 +22,73 @@ async function ensureInitialized(): Promise<void> {
     return;
   }
 
-  // Start initialization in background (non-blocking)
+  // Start initialization - NOW WE WAIT for it to complete
   if (!initializationStarted) {
     initializationStarted = true;
+    console.log("🔄 Starting news initialization (this may take a few seconds)...");
+    
     initializationPromise = (async () => {
       try {
         await initializeNewsStore();
+        
         // After initialization, check if we got real articles
         const storeAfterInit = getArticlesStore();
         const hasRealArticles = storeAfterInit.some(a => {
           const id = a.id.toLowerCase();
-          return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-') && a.canonicalUrl !== 'https://example.com/article/';
+          const isReal = !/^[0-9]+$/.test(id) && 
+                        !id.startsWith('fallback-') && 
+                        a.canonicalUrl !== 'https://example.com/article/' &&
+                        !a.canonicalUrl.includes('techcrunch.com/openai-gpt5');
+          
+          return isReal;
         });
         
         if (hasRealArticles) {
-          console.log(`✅ Real news loaded: ${storeAfterInit.length} articles`);
-        } else if (storeAfterInit.length === 0) {
-          // Still empty after trying, use mock data as last resort
-          articlesStore = [...mockArticles];
-          console.log("⚠️ Using mock articles as last resort fallback");
+          const realCount = storeAfterInit.filter(a => {
+            const id = a.id.toLowerCase();
+            return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-');
+          }).length;
+          console.log(`✅ Real news loaded: ${realCount} real articles out of ${storeAfterInit.length} total`);
+        } else {
+          console.warn(`⚠️ No real articles found. Store has ${storeAfterInit.length} articles (likely all mock/fallback)`);
+          // Don't replace with mock - let's try one more time with a simple fetch
+          console.log("🔄 Attempting emergency fetch...");
+          await emergencyFetch();
         }
       } catch (error) {
         console.error("Initialization error:", error);
-        // Keep what we have (either real or mock)
+        // Try emergency fetch as last resort
+        await emergencyFetch();
       }
     })();
     
-    // Don't wait for it - return immediately so API responds with mock data
-    // Real data will replace it when ready
+    // NOW WAIT for initialization to complete before returning
+    await initializationPromise;
+  }
+}
+
+// Emergency fetch - tries the simplest possible RSS fetch
+async function emergencyFetch(): Promise<void> {
+  try {
+    const { fetchNews } = await import("@/backend/services/newsFetcher");
+    
+    // Try just BBC - simplest and most reliable
+    const articles = await fetchNews({
+      sourceId: "bbc-emergency",
+      sourceName: "BBC News",
+      apiType: "rss",
+      feedUrl: "https://feeds.bbci.co.uk/news/rss.xml",
+      category: "world",
+    });
+    
+    if (articles.length > 0) {
+      addArticlesToStore(articles);
+      console.log(`✅ Emergency fetch successful: ${articles.length} articles`);
+    } else {
+      console.error("❌ Emergency fetch returned 0 articles");
+    }
+  } catch (error) {
+    console.error("❌ Emergency fetch failed:", error);
   }
 }
 
