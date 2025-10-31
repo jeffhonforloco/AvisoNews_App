@@ -83,53 +83,27 @@ const app = new Hono();
 // Enable CORS for all routes
 app.use("*", cors());
 
-// Mount tRPC router
-// CRITICAL: Use exact path match and handle both /trpc and /trpc/*
-// @hono/trpc-server needs the endpoint to match the client URL
-app.all("/trpc", async (c) => {
-  console.log("📡 tRPC request (exact /trpc):", c.req.method, c.req.path, c.req.url);
-  
-  // Create handler for this specific request
-  const handler = trpcServer({
-    router: appRouter,
-    createContext: async (opts) => {
-      console.log("📡 Creating context:", opts.req.method, opts.req.url);
-      return await createContext(opts);
-    },
-    onError: ({ error, path, type }) => {
-      console.error(`❌ tRPC Error on ${path} (${type}):`, error);
-      if ((error as any).code === 'NOT_FOUND' || (error as any).code === 'BAD_REQUEST') {
-        console.error(`❌ Procedure NOT FOUND: ${path}`);
-        console.error("Full error:", JSON.stringify(error, null, 2));
-        console.error("Available router structure:", JSON.stringify(getRouterStructure(appRouter), null, 2));
-      }
-    },
-  });
-  
-  return handler(c.req.raw);
+// Mount tRPC router using @hono/trpc-server
+// IMPORTANT: trpcServer returns a Hono middleware that handles all HTTP methods
+const trpcMiddleware = trpcServer({
+  router: appRouter,
+  createContext: async (opts) => {
+    console.log("📡 tRPC request received:", opts.req.method, opts.req.url);
+    return await createContext(opts);
+  },
+  onError: ({ error, path, type }) => {
+    console.error(`❌ tRPC Error on ${path} (${type}):`, error);
+    if ((error as any).code === 'NOT_FOUND' || (error as any).code === 'BAD_REQUEST') {
+      console.error(`❌ Procedure NOT FOUND: ${path}`);
+      console.error("Requested path:", path);
+      console.error("Available router structure:", JSON.stringify(getRouterStructure(appRouter), null, 2));
+    }
+  },
 });
 
-// Also handle /trpc/* for path-based requests
-app.all("/trpc/*", async (c) => {
-  console.log("📡 tRPC request (wildcard /trpc/*):", c.req.method, c.req.path, c.req.url);
-  
-  const handler = trpcServer({
-    router: appRouter,
-    createContext: async (opts) => {
-      console.log("📡 Creating context (wildcard):", opts.req.method, opts.req.url);
-      return await createContext(opts);
-    },
-    onError: ({ error, path, type }) => {
-      console.error(`❌ tRPC Error on ${path} (${type}):`, error);
-      if ((error as any).code === 'NOT_FOUND' || (error as any).code === 'BAD_REQUEST') {
-        console.error(`❌ Procedure NOT FOUND: ${path}`);
-        console.error("Available router structure:", JSON.stringify(getRouterStructure(appRouter), null, 2));
-      }
-    },
-  });
-  
-  return handler(c.req.raw);
-});
+// Mount the tRPC middleware - handles all methods (GET, POST, etc.) on /trpc and /trpc/*
+app.use("/trpc", trpcMiddleware);
+app.use("/trpc/*", trpcMiddleware);
 
 // Helper to inspect router structure
 function getRouterStructure(router: any): any {
