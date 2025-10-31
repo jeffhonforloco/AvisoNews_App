@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   StyleSheet,
   Text,
@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { ArrowLeft, ExternalLink, AlertCircle, Globe, Shield, TrendingUp } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/providers/ThemeProvider";
 
 interface SourceArticle {
@@ -36,130 +37,61 @@ interface SourceInfo {
 }
 
 export default function SourceScreen() {
-  const { sourceId } = useLocalSearchParams();
+  const { sourceId } = useLocalSearchParams<{ sourceId: string }>();
   const { colors, isDark } = useTheme();
-  const [sourceInfo, setSourceInfo] = useState<SourceInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadSourceInfo();
-  }, [sourceId]);
-
-  const loadSourceInfo = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Simulate API call - in production, fetch from your backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock data based on sourceId
-      const mockSources: Record<string, SourceInfo> = {
-        "techcrunch": {
-          id: "techcrunch",
-          name: "TechCrunch",
-          url: "https://techcrunch.com",
-          description: "TechCrunch is a leading technology media property, dedicated to obsessively profiling startups, reviewing new Internet products, and breaking tech news.",
-          trustScore: 88,
-          bias: "Center-Left",
-          factualReporting: "High",
-          articles: [
-            {
-              id: "tc1",
-              title: "OpenAI Announces GPT-5 with Revolutionary Reasoning",
-              url: "https://techcrunch.com/openai-gpt5",
-              publishedAt: "2 hours ago",
-              trustScore: 85,
-              bias: "Center"
-            },
-            {
-              id: "tc2",
-              title: "Startup Funding Reaches New Heights in Q1 2025",
-              url: "https://techcrunch.com/startup-funding",
-              publishedAt: "5 hours ago",
-              trustScore: 82,
-              bias: "Center-Left"
-            },
-            {
-              id: "tc3",
-              title: "Apple's AI Strategy Takes Shape",
-              url: "https://techcrunch.com/apple-ai",
-              publishedAt: "8 hours ago",
-              trustScore: 87,
-              bias: "Center"
-            }
-          ]
-        },
-        "bloomberg": {
-          id: "bloomberg",
-          name: "Bloomberg",
-          url: "https://bloomberg.com",
-          description: "Bloomberg delivers business and markets news, data, analysis, and video to the world, featuring stories from Businessweek and Bloomberg News.",
-          trustScore: 92,
-          bias: "Center",
-          factualReporting: "Very High",
-          articles: [
-            {
-              id: "bb1",
-              title: "Apple Stock Hits Record High on Vision Pro Sales",
-              url: "https://bloomberg.com/apple-vision",
-              publishedAt: "4 hours ago",
-              trustScore: 90,
-              bias: "Center"
-            },
-            {
-              id: "bb2",
-              title: "Fed Signals Rate Cut Timeline",
-              url: "https://bloomberg.com/fed-rates",
-              publishedAt: "6 hours ago",
-              trustScore: 93,
-              bias: "Center"
-            }
-          ]
-        },
-        "bbc": {
-          id: "bbc",
-          name: "BBC News",
-          url: "https://bbc.com/news",
-          description: "BBC News provides trusted World and UK news as well as local and regional perspectives. Also entertainment, business, science, technology and health news.",
-          trustScore: 95,
-          bias: "Center-Left",
-          factualReporting: "Very High",
-          articles: [
-            {
-              id: "bbc1",
-              title: "Global Climate Summit Reaches Historic Agreement",
-              url: "https://bbc.com/climate-summit",
-              publishedAt: "3 hours ago",
-              trustScore: 94,
-              bias: "Center"
-            },
-            {
-              id: "bbc2",
-              title: "UK Economy Shows Signs of Recovery",
-              url: "https://bbc.com/uk-economy",
-              publishedAt: "7 hours ago",
-              trustScore: 92,
-              bias: "Center-Left"
-            }
-          ]
-        }
-      };
-      
-      const source = mockSources[sourceId as string];
-      if (source) {
-        setSourceInfo(source);
-      } else {
-        setError("Source not found");
-      }
-    } catch (err) {
-      setError("Failed to load source information");
-      console.error("Error loading source:", err);
-    } finally {
-      setIsLoading(false);
+  
+  // Fetch source from API
+  const sourceQuery = trpc.news.sources.byId.useQuery(
+    { id: sourceId || "" },
+    {
+      enabled: !!sourceId,
+      staleTime: 1000 * 60 * 10, // 10 minutes
+      retry: 1,
     }
-  };
+  );
+
+  // Fetch articles from this source
+  const articlesQuery = trpc.news.articles.list.useQuery(
+    { limit: 50 },
+    {
+      staleTime: 1000 * 60 * 5,
+    }
+  );
+
+  const source = sourceQuery.data;
+  const isLoading = sourceQuery.isLoading || articlesQuery.isLoading;
+  const error = sourceQuery.error;
+
+  // Filter articles by source
+  const sourceArticles = articlesQuery.data?.articles.filter(
+    (article) => article.sourceId === sourceId
+  ) || [];
+
+  // Transform to SourceArticle format
+  const transformedArticles: SourceArticle[] = sourceArticles.map((article) => ({
+    id: article.id,
+    title: article.title,
+    url: article.canonicalUrl,
+    publishedAt: article.publishedAt,
+    trustScore: article.trustScore?.overall || 75,
+    bias: article.biasAnalysis?.overall || "center",
+  }));
+
+  // Transform source to SourceInfo format
+  const sourceInfo: SourceInfo | null = source
+    ? {
+        id: source.id,
+        name: source.name,
+        url: source.homepageUrl || "",
+        description: `${source.name} is a trusted news source with ${source.factualityScore || 85}% factual reporting.`,
+        trustScore: source.trustRating || 85,
+        bias: source.biasRating?.political || "center",
+        factualReporting: source.factualityScore
+          ? `${source.factualityScore}%`
+          : "High",
+        articles: transformedArticles,
+      }
+    : null;
 
   const openArticle = async (url: string) => {
     try {
@@ -201,129 +133,144 @@ export default function SourceScreen() {
   if (error || !sourceInfo) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={24} color={colors.text.primary} />
-          </TouchableOpacity>
-        </View>
         <View style={styles.errorContainer}>
           <AlertCircle size={48} color={colors.status.error} />
           <Text style={[styles.errorText, { color: colors.text.primary }]}>
-            {error || "Source not found"}
+            {error?.message || "Source not found"}
           </Text>
-          <TouchableOpacity 
-            style={[styles.retryButton, { backgroundColor: colors.primary }]}
-            onPress={loadSourceInfo}
-          >
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Source Details</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={isDark ? ["#1F2937", "#111827"] : ["#F3F4F6", "#FFFFFF"]}
-          style={styles.sourceHeader}
-        >
-          <View style={styles.sourceIcon}>
-            <Globe size={32} color={colors.primary} />
-          </View>
-          <Text style={[styles.sourceName, { color: colors.text.primary }]}>
-            {sourceInfo.name}
-          </Text>
-          <TouchableOpacity 
-            style={styles.websiteButton}
-            onPress={() => openArticle(sourceInfo.url)}
-          >
-            <Text style={[styles.websiteButtonText, { color: colors.primary }]}>Visit Website</Text>
-            <ExternalLink size={16} color={colors.primary} />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <ArrowLeft size={24} color={colors.text.primary} />
           </TouchableOpacity>
-        </LinearGradient>
-
-        <View style={styles.metricsContainer}>
-          <View style={styles.metricCard}>
-            <View style={[styles.metricIcon, { backgroundColor: getTrustColor(sourceInfo.trustScore) + "20" }]}>
-              <Shield size={20} color={getTrustColor(sourceInfo.trustScore)} />
-            </View>
-            <Text style={[styles.metricValue, { color: getTrustColor(sourceInfo.trustScore) }]}>
-              {sourceInfo.trustScore}%
-            </Text>
-            <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Trust Score</Text>
-          </View>
-
-          <View style={styles.metricCard}>
-            <View style={[styles.metricIcon, { backgroundColor: getBiasColor(sourceInfo.bias) + "20" }]}>
-              <TrendingUp size={20} color={getBiasColor(sourceInfo.bias)} />
-            </View>
-            <Text style={[styles.metricValue, { color: getBiasColor(sourceInfo.bias) }]}>
-              {sourceInfo.bias}
-            </Text>
-            <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Political Bias</Text>
-          </View>
-
-          <View style={styles.metricCard}>
-            <View style={[styles.metricIcon, { backgroundColor: colors.status.success + "20" }]}>
-              <AlertCircle size={20} color={colors.status.success} />
-            </View>
-            <Text style={[styles.metricValue, { color: colors.status.success }]}>
-              {sourceInfo.factualReporting}
-            </Text>
-            <Text style={[styles.metricLabel, { color: colors.text.tertiary }]}>Factual Reporting</Text>
-          </View>
         </View>
 
-        <View style={styles.descriptionContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>About</Text>
-          <Text style={[styles.description, { color: colors.text.secondary }]}>
-            {sourceInfo.description}
-          </Text>
-        </View>
-
-        <View style={styles.articlesContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>Recent Articles</Text>
-          {sourceInfo.articles.map((article) => (
-            <TouchableOpacity
-              key={article.id}
-              style={[styles.articleCard, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}
-              onPress={() => openArticle(article.url)}
-            >
-              <View style={styles.articleContent}>
-                <Text style={[styles.articleTitle, { color: colors.text.primary }]} numberOfLines={2}>
-                  {article.title}
-                </Text>
-                <View style={styles.articleMeta}>
-                  <Text style={[styles.articleTime, { color: colors.text.tertiary }]}>
-                    {article.publishedAt}
+        {/* Source Header */}
+        <View style={[styles.sourceHeader, { backgroundColor: colors.background.card }]}>
+          <LinearGradient
+            colors={isDark ? ["#1C1C1E", "#2C2C2E"] : ["#F5F5F7", "#FFFFFF"]}
+            style={styles.sourceHeaderGradient}
+          >
+            <View style={styles.sourceInfo}>
+              <View style={styles.sourceTitleRow}>
+                <Globe size={32} color={colors.primary} />
+                <View style={styles.sourceTitle}>
+                  <Text style={[styles.sourceName, { color: colors.text.primary }]}>
+                    {sourceInfo.name}
                   </Text>
-                  <View style={styles.articleMetrics}>
-                    <View style={[styles.trustBadge, { backgroundColor: getTrustColor(article.trustScore) + "20" }]}>
-                      <Text style={[styles.trustBadgeText, { color: getTrustColor(article.trustScore) }]}>
-                        {article.trustScore}%
-                      </Text>
-                    </View>
-                    <View style={[styles.biasBadge, { backgroundColor: getBiasColor(article.bias) + "20" }]}>
-                      <Text style={[styles.biasBadgeText, { color: getBiasColor(article.bias) }]}>
-                        {article.bias}
-                      </Text>
-                    </View>
+                  <TouchableOpacity
+                    onPress={() => openArticle(sourceInfo.url)}
+                    style={styles.sourceUrlButton}
+                  >
+                    <Text style={[styles.sourceUrl, { color: colors.primary }]}>
+                      {sourceInfo.url.replace(/^https?:\/\//, "")}
+                    </Text>
+                    <ExternalLink size={14} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Text style={[styles.sourceDescription, { color: colors.text.secondary }]}>
+                {sourceInfo.description}
+              </Text>
+
+              {/* Trust Metrics */}
+              <View style={styles.metricsContainer}>
+                <View style={styles.metric}>
+                  <Shield size={18} color={getTrustColor(sourceInfo.trustScore)} />
+                  <View style={styles.metricInfo}>
+                    <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
+                      Trust Score
+                    </Text>
+                    <Text
+                      style={[styles.metricValue, { color: getTrustColor(sourceInfo.trustScore) }]}
+                    >
+                      {sourceInfo.trustScore}/100
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.metric}>
+                  <TrendingUp size={18} color={getBiasColor(sourceInfo.bias)} />
+                  <View style={styles.metricInfo}>
+                    <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
+                      Political Bias
+                    </Text>
+                    <Text
+                      style={[styles.metricValue, { color: getBiasColor(sourceInfo.bias) }]}
+                    >
+                      {sourceInfo.bias}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.metric}>
+                  <AlertCircle size={18} color={colors.status.success} />
+                  <View style={styles.metricInfo}>
+                    <Text style={[styles.metricLabel, { color: colors.text.secondary }]}>
+                      Factual Reporting
+                    </Text>
+                    <Text style={[styles.metricValue, { color: colors.status.success }]}>
+                      {sourceInfo.factualReporting}
+                    </Text>
                   </View>
                 </View>
               </View>
-              <ExternalLink size={18} color={colors.text.tertiary} />
-            </TouchableOpacity>
-          ))}
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Articles List */}
+        <View style={styles.articlesSection}>
+          <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+            Latest Articles ({sourceInfo.articles.length})
+          </Text>
+
+          {sourceInfo.articles.length === 0 ? (
+            <View style={styles.noArticles}>
+              <Text style={[styles.noArticlesText, { color: colors.text.secondary }]}>
+                No articles found from this source
+              </Text>
+            </View>
+          ) : (
+            sourceInfo.articles.map((article) => (
+              <TouchableOpacity
+                key={article.id}
+                style={[styles.articleCard, { backgroundColor: colors.background.card }]}
+                onPress={() => router.push(`/article/${article.id}`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.articleHeader}>
+                  <Text style={[styles.articleTitle, { color: colors.text.primary }]} numberOfLines={2}>
+                    {article.title}
+                  </Text>
+                </View>
+
+                <View style={styles.articleFooter}>
+                  <View style={styles.articleMeta}>
+                    <Text style={[styles.articleTime, { color: colors.text.secondary }]}>
+                      {article.publishedAt}
+                    </Text>
+                    <Text style={[styles.articleDot, { color: colors.text.tertiary }]}>•</Text>
+                    <View style={[styles.trustBadge, { backgroundColor: `${getTrustColor(article.trustScore)}20` }]}>
+                      <Text style={[styles.trustBadgeText, { color: getTrustColor(article.trustScore) }]}>
+                        Trust: {article.trustScore}
+                      </Text>
+                    </View>
+                  </View>
+                  <ExternalLink size={16} color={colors.text.tertiary} />
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -334,174 +281,158 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  headerSpacer: {
-    width: 32,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 16,
   },
   loadingText: {
+    marginTop: 12,
     fontSize: 16,
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 40,
-    gap: 16,
+    padding: 20,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 18,
+    marginTop: 16,
     textAlign: "center",
   },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 8,
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 10 : 20,
+    paddingBottom: 16,
   },
-  retryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
+  backButton: {
+    padding: 8,
+    alignSelf: "flex-start",
   },
   sourceHeader: {
-    alignItems: "center",
-    paddingVertical: 32,
-    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  sourceIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
+  sourceHeaderGradient: {
+    padding: 24,
+  },
+  sourceInfo: {
+    gap: 16,
+  },
+  sourceTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  sourceTitle: {
+    flex: 1,
+    gap: 6,
   },
   sourceName: {
     fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 12,
+    fontWeight: "800",
+    letterSpacing: -0.5,
   },
-  websiteButton: {
+  sourceUrlButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    gap: 4,
   },
-  websiteButtonText: {
+  sourceUrl: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
   },
-  metricsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    gap: 12,
-  },
-  metricCard: {
-    flex: 1,
-    alignItems: "center",
-    gap: 8,
-  },
-  metricIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  metricValue: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  metricLabel: {
-    fontSize: 11,
-    textAlign: "center",
-  },
-  descriptionContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  description: {
+  sourceDescription: {
     fontSize: 15,
     lineHeight: 22,
   },
-  articlesContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+  metricsContainer: {
+    gap: 12,
+    marginTop: 8,
   },
-  articleCard: {
+  metric: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+  },
+  metricInfo: {
+    flex: 1,
+  },
+  metricLabel: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  articlesSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 16,
+    letterSpacing: -0.3,
+  },
+  articleCard: {
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  articleHeader: {
     marginBottom: 12,
   },
-  articleContent: {
-    flex: 1,
-    gap: 8,
-  },
   articleTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    lineHeight: 20,
+    fontSize: 17,
+    fontWeight: "700",
+    lineHeight: 24,
+  },
+  articleFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   articleMeta: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 8,
   },
   articleTime: {
-    fontSize: 12,
+    fontSize: 13,
   },
-  articleMetrics: {
-    flexDirection: "row",
-    gap: 6,
+  articleDot: {
+    fontSize: 13,
   },
   trustBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   trustBadgeText: {
-    fontSize: 10,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
   },
-  biasBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+  noArticles: {
+    paddingVertical: 40,
+    alignItems: "center",
   },
-  biasBadgeText: {
-    fontSize: 10,
-    fontWeight: "600",
+  noArticlesText: {
+    fontSize: 16,
+    textAlign: "center",
   },
 });

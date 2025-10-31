@@ -9,12 +9,14 @@ import {
   Share,
   Platform,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { ArrowLeft, Share2, Bookmark, ExternalLink, Clock } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
+import { trpc } from "@/lib/trpc";
 import { useNews } from "@/providers/NewsProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -24,13 +26,34 @@ import RelatedArticles from "@/components/RelatedArticles";
 import EnhancedAggregator from "@/components/EnhancedAggregator";
 
 export default function ArticleScreen() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { articles, incrementViewCount } = useNews();
   const { incrementArticlesRead } = useAuth();
   const { colors, isDark } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   
-  const article = articles.find(a => a.id === id);
+  // Fetch article from API if not in local list
+  const articleQuery = trpc.news.articles.byId.useQuery(
+    { id: id || "" },
+    {
+      enabled: !!id,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    }
+  );
+
+  // Get related articles from API
+  const relatedArticlesQuery = trpc.news.articles.related.useQuery(
+    { articleId: id || "", limit: 3 },
+    {
+      enabled: !!id,
+      staleTime: 1000 * 60 * 5,
+    }
+  );
+  
+  // Use article from API query if available, otherwise fall back to local list
+  const article = articleQuery.data || articles.find(a => a.id === id);
+  const relatedArticles = relatedArticlesQuery.data?.articles || [];
 
   useEffect(() => {
     if (article) {
@@ -52,10 +75,27 @@ export default function ArticleScreen() {
     extrapolate: "clamp",
   });
 
+  if (articleQuery.isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
+            Loading article...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!article) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text>Article not found</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: colors.text.primary }]}>
+            Article not found
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -72,13 +112,6 @@ export default function ArticleScreen() {
     }
   };
 
-  const relatedArticles = articles
-    .filter(a => 
-      a.id !== article.id && 
-      (a.category === article.category || 
-       a.tags?.some(tag => article.tags?.includes(tag)))
-    )
-    .slice(0, 3);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
@@ -177,7 +210,7 @@ export default function ArticleScreen() {
             canonicalUrl={article.canonicalUrl}
           />
 
-          {relatedArticles.length > 0 && (
+          {relatedArticles && relatedArticles.length > 0 && (
             <RelatedArticles articles={relatedArticles} />
           )}
         </View>
@@ -211,6 +244,25 @@ export default function ArticleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    textAlign: "center",
   },
   header: {
     position: "absolute",

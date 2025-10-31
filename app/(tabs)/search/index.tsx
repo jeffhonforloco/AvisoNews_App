@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,10 +8,13 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, X, TrendingUp, Clock } from "lucide-react-native";
-import { useNews } from "@/providers/NewsProvider";
+import { useDebounce } from "@/hooks/useDebounce";
+import { trpc } from "@/lib/trpc";
+import { useTheme } from "@/providers/ThemeProvider";
 import ArticleCard from "@/components/ArticleCard";
 
 export default function SearchScreen() {
@@ -22,19 +25,20 @@ export default function SearchScreen() {
     "Climate Change",
     "Electric Vehicles",
   ]);
-  const { articles } = useNews();
+  const { colors } = useTheme();
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    
-    const query = searchQuery.toLowerCase();
-    return articles.filter(
-      article =>
-        article.title.toLowerCase().includes(query) ||
-        article.tldr?.toLowerCase().includes(query) ||
-        article.tags?.some(tag => tag.toLowerCase().includes(query))
-    );
-  }, [searchQuery, articles]);
+  // Use API search when query is provided
+  const searchQueryResult = trpc.news.articles.search.useQuery(
+    { query: debouncedSearchQuery, limit: 50 },
+    {
+      enabled: debouncedSearchQuery.length > 0,
+      staleTime: 1000 * 60 * 2, // 2 minutes
+      retry: 1,
+    }
+  );
+
+  const searchResults = searchQueryResult.data?.articles || [];
 
   const trendingTopics = [
     "Artificial Intelligence",
@@ -91,19 +95,32 @@ export default function SearchScreen() {
         >
           {searchQuery.length > 0 ? (
             <View style={styles.results}>
-              <Text style={styles.sectionTitle}>
-                {searchResults.length} Results for "{searchQuery}"
-              </Text>
-              {searchResults.map((article) => (
-                <ArticleCard key={article.id} article={article} variant="compact" />
-              ))}
-              {searchResults.length === 0 && (
-                <View style={styles.noResults}>
-                  <Text style={styles.noResultsText}>No articles found</Text>
-                  <Text style={styles.noResultsSubtext}>
-                    Try searching for different keywords
+              {searchQueryResult.isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
+                    Searching...
                   </Text>
                 </View>
+              ) : (
+                <>
+                  <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+                    {searchQueryResult.data?.total || 0} Results for "{searchQuery}"
+                  </Text>
+                  {searchResults.map((article) => (
+                    <ArticleCard key={article.id} article={article} variant="compact" />
+                  ))}
+                  {searchResults.length === 0 && !searchQueryResult.isLoading && (
+                    <View style={styles.noResults}>
+                      <Text style={[styles.noResultsText, { color: colors.text.secondary }]}>
+                        No articles found
+                      </Text>
+                      <Text style={[styles.noResultsSubtext, { color: colors.text.tertiary }]}>
+                        Try searching for different keywords
+                      </Text>
+                    </View>
+                  )}
+                </>
               )}
             </View>
           ) : (
@@ -156,7 +173,14 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F2F2F7",
+  },
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
   },
   keyboardView: {
     flex: 1,

@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback } from "react";
 import createContextHook from "@nkzw/create-context-hook";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { trpc } from "@/lib/trpc";
 import { Article, Category } from "@/types/news";
 import { mockArticles } from "@/mocks/articles";
 
@@ -15,94 +14,48 @@ interface NewsContextType {
 }
 
 export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => {
-  const [articles, setArticles] = useState<Article[]>([]);
-
-  const categoriesQuery = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      try {
-        const stored = await AsyncStorage.getItem("categories");
-        if (stored) return JSON.parse(stored);
-        
-        const defaultCategories: Category[] = [
-          { id: "tech", name: "Technology", slug: "tech" },
-          { id: "business", name: "Business", slug: "business" },
-          { id: "world", name: "World", slug: "world" },
-          { id: "health", name: "Health", slug: "health" },
-          { id: "gaming", name: "Gaming", slug: "gaming" },
-          { id: "science", name: "Science", slug: "science" },
-          { id: "sports", name: "Sports", slug: "sports" },
-          { id: "audio", name: "Audio", slug: "audio" },
-        ];
-        
-        await AsyncStorage.setItem("categories", JSON.stringify(defaultCategories));
-        return defaultCategories;
-      } catch (error) {
-        console.error("Error loading categories:", error);
-        return [];
-      }
-    },
-  });
-
-  const articlesQuery = useQuery({
-    queryKey: ["articles"],
-    queryFn: async () => {
-      try {
-        // First check for cached data
-        const stored = await AsyncStorage.getItem("articles");
-        if (stored) {
-          const parsedArticles = JSON.parse(stored);
-          if (parsedArticles.length > 0) {
-            // Return cached data immediately
-            setArticles(parsedArticles);
-            return parsedArticles;
-          }
-        }
-        
-        // If no cached data, use mock data
-        await AsyncStorage.setItem("articles", JSON.stringify(mockArticles));
-        setArticles(mockArticles);
-        return mockArticles;
-      } catch (error) {
-        console.error("Error loading articles:", error);
-        // Fallback to mock data on error
-        setArticles(mockArticles);
-        return mockArticles;
-      }
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
-  });
-
-  const updateArticlesMutation = useMutation({
-    mutationFn: async (updatedArticles: Article[]) => {
-      await AsyncStorage.setItem("articles", JSON.stringify(updatedArticles));
-      return updatedArticles;
-    },
-    onSuccess: (data) => {
-      setArticles(data);
-    },
-  });
-
-  useEffect(() => {
-    if (articlesQuery.data) {
-      setArticles(articlesQuery.data);
+  // Fetch articles from API
+  const articlesQuery = trpc.news.articles.list.useQuery(
+    { limit: 50 },
+    {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes
+      retry: 2,
+      retryDelay: 1000,
     }
-  }, [articlesQuery.data]);
+  );
 
-  const incrementViewCount = useCallback((articleId: string) => {
-    const updatedArticles = articles.map(article =>
-      article.id === articleId
-        ? { ...article, viewCount: article.viewCount + 1 }
-        : article
-    );
-    updateArticlesMutation.mutate(updatedArticles);
-  }, [articles]);
+  // Fetch categories from API
+  const categoriesQuery = trpc.news.categories.list.useQuery(undefined, {
+    staleTime: 1000 * 60 * 60, // 1 hour (categories don't change often)
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours
+    retry: 2,
+  });
+
+  // Mutation for incrementing view count
+  const incrementViewMutation = trpc.news.articles.incrementView.useMutation({
+    onSuccess: () => {
+      // Invalidate articles query to refetch with updated view count
+      articlesQuery.refetch();
+    },
+  });
+
+  const incrementViewCount = useCallback(
+    (articleId: string) => {
+      incrementViewMutation.mutate({ id: articleId });
+    },
+    [incrementViewMutation]
+  );
+
+  // Fallback to mock data if API fails
+  const articles =
+    articlesQuery.data?.articles || (articlesQuery.error ? mockArticles : []);
+  const categories = categoriesQuery.data || [];
 
   return {
-    articles: articles.length > 0 ? articles : mockArticles, // Always provide data
-    categories: categoriesQuery.data || [],
-    isLoading: articlesQuery.isLoading && articles.length === 0, // Only show loading if no data
+    articles,
+    categories,
+    isLoading: articlesQuery.isLoading || categoriesQuery.isLoading,
     error: articlesQuery.error || categoriesQuery.error || null,
     refetch: () => {
       articlesQuery.refetch();
