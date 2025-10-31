@@ -131,10 +131,11 @@ const trpcMiddleware = trpcServer({
 });
 
 // Mount the tRPC middleware
-// IMPORTANT: Order matters! More specific routes should come first
-// /trpc/* must come before /trpc to catch path-based requests
-app.all("/trpc/*", trpcMiddleware);
-app.all("/trpc", trpcMiddleware);
+// CRITICAL: Use app.use() for middleware, not app.all()
+// The middleware handles all HTTP methods (GET, POST, etc.) internally
+// Order matters: more specific routes first
+app.use("/trpc/*", trpcMiddleware);
+app.use("/trpc", trpcMiddleware);
 
 // Helper to inspect router structure recursively
 function getRouterStructure(router: any, depth = 0): any {
