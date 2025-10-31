@@ -4,21 +4,26 @@
 import { Article, Category, Source } from "@/types/news";
 
 const getBaseUrl = () => {
-  // Rork automatically sets this - check if it's available
+  // Priority 1: Rork automatically sets this in production
   if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
     const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
-    console.log("🌐 API Base URL:", baseUrl);
+    console.log("🌐 API Base URL (from Rork):", baseUrl);
     return baseUrl;
   }
   
-  // Fallback for development
-  if (typeof window !== "undefined") {
+  // Priority 2: Web browser - use current origin
+  if (typeof window !== "undefined" && window.location) {
     const baseUrl = window.location.origin;
-    console.log("🌐 Using window.location.origin as base URL:", baseUrl);
+    console.log("🌐 API Base URL (from window.location.origin):", baseUrl);
     return baseUrl;
   }
   
-  throw new Error("No base url found - Rork should set EXPO_PUBLIC_RORK_API_BASE_URL automatically");
+  // Priority 3: React Native / Development - use localhost
+  // This works when running Rork locally or in development
+  const devUrl = "http://localhost:8081";
+  console.log("🌐 API Base URL (development fallback):", devUrl);
+  console.log("💡 Tip: Set EXPO_PUBLIC_RORK_API_BASE_URL for production");
+  return devUrl;
 };
 
 interface ApiResponse<T> {
