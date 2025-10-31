@@ -84,10 +84,11 @@ const app = new Hono();
 app.use("*", cors());
 
 // Mount tRPC router using @hono/trpc-server
-// NOTE: @hono/trpc-server doesn't use 'endpoint' parameter - it handles routing automatically
-// The path matching in Hono is what matters: /trpc/* catches all tRPC requests
+// CRITICAL: Rork mounts server at /api, so endpoint should be /api/trpc
+// This tells tRPC where the base endpoint is so it can parse paths correctly
 const trpcMiddleware = trpcServer({
   router: appRouter,
+  endpoint: "/api/trpc", // CRITICAL: Must match client URL path
   createContext: async (opts) => {
     try {
       const url = new URL(opts.req.url);

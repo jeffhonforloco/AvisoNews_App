@@ -8,11 +8,6 @@ import {
   getRelatedArticles,
 } from "./routes/news/articles/route";
 
-// Verify imports are not undefined
-console.log("🔍 Verifying article route exports:");
-console.log("  getArticles:", typeof getArticles, getArticles ? "✅" : "❌");
-console.log("  getArticleById:", typeof getArticleById, getArticleById ? "✅" : "❌");
-console.log("  incrementViewCount:", typeof incrementViewCount, incrementViewCount ? "✅" : "❌");
 import {
   getCategories,
   getCategoryBySlug,
