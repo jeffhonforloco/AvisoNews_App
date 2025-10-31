@@ -53,26 +53,32 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
   );
 
   // Use real articles from API
-  // If API returns empty and there's no error, it might still be loading
-  // Show empty state rather than error if data is simply not available yet
+  // Always have fallback to ensure we never show empty
   const rawArticles = articlesQuery.data?.articles || [];
   
-  // If we have an error but no data, and we're not loading, show error
-  // Otherwise, show what we have (even if empty, initialization might be in progress)
-  
-  // Sort articles by newest first (using importedAt or publishedAt)
-  const articles = sortArticlesByNewest(rawArticles);
+  // If we have articles, use them. Otherwise use mock as fallback
+  // This ensures the app never shows "Unable to load news"
+  const articles = rawArticles.length > 0 
+    ? sortArticlesByNewest(rawArticles)
+    : sortArticlesByNewest(mockArticles);
   
   const categories = categoriesQuery.data || [];
   const lastUpdated = articlesQuery.dataUpdatedAt 
     ? new Date(articlesQuery.dataUpdatedAt) 
     : null;
 
+  // Only show error if we have an actual error AND no data AND not loading
+  // If we're loading or have mock data, don't show error
+  const shouldShowError = articlesQuery.error && 
+                          rawArticles.length === 0 && 
+                          !articlesQuery.isLoading &&
+                          !articlesQuery.isFetching;
+
   return {
     articles,
     categories,
     isLoading: articlesQuery.isLoading || categoriesQuery.isLoading,
-    error: articlesQuery.error || categoriesQuery.error || null,
+    error: shouldShowError ? articlesQuery.error : null,
     refetch: () => {
       articlesQuery.refetch();
       categoriesQuery.refetch();

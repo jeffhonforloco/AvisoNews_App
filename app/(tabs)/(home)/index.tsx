@@ -109,11 +109,16 @@ export default function HomeScreen() {
     );
   }
 
-  if (error && articles.length === 0) {
+  // Only show error if we have an error AND no articles AND not loading
+  // Since we now always have fallback articles, this should rarely trigger
+  if (error && articles.length === 0 && !isLoading) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: colors.background.primary }]}>
         <AlertCircle size={48} color={colors.text.secondary} />
         <Text style={[styles.errorText, { color: colors.text.primary }]}>Unable to load news</Text>
+        <Text style={[styles.errorSubtext, { color: colors.text.secondary }]}>
+          Please check your connection and try again
+        </Text>
         <TouchableOpacity 
           style={[styles.retryButton, { backgroundColor: colors.primary }]} 
           onPress={refetch}
@@ -457,6 +462,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    marginBottom: 24,
+    textAlign: 'center',
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,

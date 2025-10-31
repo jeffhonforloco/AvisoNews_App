@@ -5,32 +5,47 @@ import { Article } from "@/types/news";
 import { initializeNewsStore } from "@/backend/services/newsInitializer";
 
 // In-memory store (in production, this would be a database)
-let articlesStore: Article[] = [];
+// Start with mock data so app always has content immediately
+let articlesStore: Article[] = [...mockArticles];
 let initializationPromise: Promise<void> | null = null;
+let initializationStarted = false;
 
-// Initialize with real news on first access
+// Initialize with real news on first access (runs in background, doesn't block)
 async function ensureInitialized(): Promise<void> {
-  if (articlesStore.length === 0 && !initializationPromise) {
-    initializationPromise = initializeNewsStore();
-    try {
-      await initializationPromise;
-    } catch (error) {
-      console.error("Initialization error:", error);
-      // Don't throw - we'll use fallback
-    }
-  } else if (initializationPromise) {
+  // If already initialized or in progress, just wait for it
+  if (initializationStarted && initializationPromise) {
     try {
       await initializationPromise;
     } catch (error) {
       console.error("Initialization error:", error);
     }
+    return;
   }
-  
-  // If still empty after initialization, use mock data as fallback
-  // This ensures the app always has content to show
-  if (articlesStore.length === 0) {
-    console.log("⚠️ Using mock articles as fallback");
-    articlesStore = [...mockArticles];
+
+  // Start initialization in background (non-blocking)
+  if (!initializationStarted) {
+    initializationStarted = true;
+    initializationPromise = (async () => {
+      try {
+        await initializeNewsStore();
+        // After initialization, replace mock data with real data
+        const storeAfterInit = getArticlesStore();
+        if (storeAfterInit.length > 0 && storeAfterInit.some(a => !a.id.startsWith('fallback-'))) {
+          // We have real articles, keep them
+          console.log(`✅ Real news loaded: ${storeAfterInit.length} articles`);
+        } else if (storeAfterInit.length === 0) {
+          // Still empty, use mock data
+          articlesStore = [...mockArticles];
+          console.log("⚠️ Using mock articles as fallback");
+        }
+      } catch (error) {
+        console.error("Initialization error:", error);
+        // Keep mock data on error
+      }
+    })();
+    
+    // Don't wait for it - return immediately so API responds with mock data
+    // Real data will replace it when ready
   }
 }
 
