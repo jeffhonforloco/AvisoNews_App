@@ -67,7 +67,7 @@ app.get("/api", (c) => {
 
 // ARTICLES ROUTES - Try every possible path
 app.get("/articles", (c) => {
-  console.log("📰 GET /articles");
+  console.log("📰 GET /articles - Handler called!");
   try {
     const category = c.req.query("category");
     const limit = parseInt(c.req.query("limit") || "20");
@@ -75,6 +75,8 @@ app.get("/articles", (c) => {
     const featured = c.req.query("featured") === "true";
     const breaking = c.req.query("breaking") === "true";
 
+    console.log(`📰 Query params: category=${category}, limit=${limit}, offset=${offset}`);
+    
     const articles = getArticles({
       category,
       limit,
@@ -83,7 +85,7 @@ app.get("/articles", (c) => {
       breaking,
     });
 
-    console.log(`✅ Returning ${articles.length} articles`);
+    console.log(`✅ Returning ${articles.length} articles from store`);
     return c.json({
       success: true,
       data: articles,
@@ -126,10 +128,10 @@ app.get("/api/articles", (c) => {
 
 // CATEGORIES ROUTES - Try every possible path
 app.get("/categories", (c) => {
-  console.log("📂 GET /categories");
+  console.log("📂 GET /categories - Handler called!");
   try {
     const categories = getCategories();
-    console.log(`✅ Returning ${categories.length} categories`);
+    console.log(`✅ Returning ${categories.length} categories from store`);
     return c.json({ success: true, data: categories });
   } catch (error) {
     console.error("❌ Error in /categories:", error);
