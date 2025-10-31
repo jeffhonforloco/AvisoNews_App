@@ -31,4 +31,13 @@ console.log("📰 Initializing news aggregation...");
 })();
 
 console.log("✅ Server ready for Rork");
+console.log("📋 Available routes:");
+console.log("   - GET  / (health check)");
+console.log("   - GET  /articles");
+console.log("   - GET  /api/articles");
+console.log("   - GET  /categories");
+console.log("   - GET  /api/categories");
+console.log("   - GET  /sources");
+console.log("   - GET  /api/sources");
+
 export default app;
