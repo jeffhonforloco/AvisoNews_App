@@ -84,38 +84,58 @@ const app = new Hono();
 app.use("*", cors());
 
 // Mount tRPC router using @hono/trpc-server
-// IMPORTANT: trpcServer returns a Hono middleware that handles all HTTP methods
+// CRITICAL: The endpoint must match exactly what the client calls
+// Client calls: /api/trpc/news.articles.list
+// Since Rork mounts server at /api, we handle /trpc/*
 const trpcMiddleware = trpcServer({
   router: appRouter,
+  endpoint: "/trpc", // Explicit endpoint path
   createContext: async (opts) => {
-    console.log("📡 tRPC request received:", opts.req.method, opts.req.url);
+    const url = new URL(opts.req.url);
+    console.log("📡 tRPC request:", opts.req.method, url.pathname, url.search);
     return await createContext(opts);
   },
   onError: ({ error, path, type }) => {
-    console.error(`❌ tRPC Error on ${path} (${type}):`, error);
+    console.error(`\n❌ tRPC ERROR`);
+    console.error(`Path: ${path}`);
+    console.error(`Type: ${type}`);
+    console.error(`Error:`, error);
+    
     if ((error as any).code === 'NOT_FOUND' || (error as any).code === 'BAD_REQUEST') {
-      console.error(`❌ Procedure NOT FOUND: ${path}`);
-      console.error("Requested path:", path);
-      console.error("Available router structure:", JSON.stringify(getRouterStructure(appRouter), null, 2));
+      console.error(`\n❌ PROCEDURE NOT FOUND: ${path}`);
+      console.error("This means the router doesn't have this path registered.");
+      console.error("\n📋 AVAILABLE ROUTER STRUCTURE:");
+      console.log(JSON.stringify(getRouterStructure(appRouter), null, 2));
+      console.error("\n🔍 Did you mean one of these?");
+      
+      // Try to suggest similar paths
+      const structure = getRouterStructure(appRouter);
+      if (structure.news?.articles) {
+        console.error("Available procedures under news.articles:", structure.news.articles);
+      }
     }
   },
 });
 
-// Mount the tRPC middleware - handles all methods (GET, POST, etc.) on /trpc and /trpc/*
-app.use("/trpc", trpcMiddleware);
-app.use("/trpc/*", trpcMiddleware);
+// Mount the tRPC middleware - CRITICAL: must handle /trpc/* for path-based routing
+// tRPC sends requests like: POST /trpc/news.articles.list
+app.all("/trpc", trpcMiddleware);
+app.all("/trpc/*", trpcMiddleware);
 
-// Helper to inspect router structure
-function getRouterStructure(router: any): any {
+// Helper to inspect router structure recursively
+function getRouterStructure(router: any, depth = 0): any {
   try {
     const record = router._def?.record;
     if (!record) return { error: "No _def.record found" };
     
     const structure: any = {};
     for (const [key, value] of Object.entries(record)) {
-      if ((value as any)?._def?.record) {
-        structure[key] = Object.keys((value as any)._def.record);
+      const subRouter = (value as any)?._def?.record;
+      if (subRouter) {
+        // It's a sub-router, recurse deeper
+        structure[key] = getRouterStructure(value, depth + 1);
       } else {
+        // It's a procedure
         structure[key] = "procedure";
       }
     }
