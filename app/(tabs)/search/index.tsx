@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,46 +8,33 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, X, TrendingUp, Clock } from "lucide-react-native";
-import { useDebounce } from "@/hooks/useDebounce";
-import { api } from "@/lib/api";
-import { Article } from "@/types/news";
-import { useTheme } from "@/providers/ThemeProvider";
+import { useNews } from "@/providers/NewsProvider";
 import ArticleCard from "@/components/ArticleCard";
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Article[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState([
     "AI Technology",
     "Stock Market",
     "Climate Change",
     "Electric Vehicles",
   ]);
-  const { colors } = useTheme();
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const { articles } = useNews();
 
-  // Search when query changes
-  useEffect(() => {
-    if (debouncedSearchQuery.length > 0) {
-      setIsSearching(true);
-      api.searchArticles(debouncedSearchQuery, 50)
-        .then((results) => {
-          setSearchResults(results);
-          setIsSearching(false);
-        })
-        .catch((err) => {
-          console.error("Search error:", err);
-          setIsSearching(false);
-        });
-    } else {
-      setSearchResults([]);
-    }
-  }, [debouncedSearchQuery]);
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    
+    const query = searchQuery.toLowerCase();
+    return articles.filter(
+      article =>
+        article.title.toLowerCase().includes(query) ||
+        article.tldr?.toLowerCase().includes(query) ||
+        article.tags?.some(tag => tag.toLowerCase().includes(query))
+    );
+  }, [searchQuery, articles]);
 
   const trendingTopics = [
     "Artificial Intelligence",
@@ -104,32 +91,19 @@ export default function SearchScreen() {
         >
           {searchQuery.length > 0 ? (
             <View style={styles.results}>
-              {searchQueryResult.isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.text.secondary }]}>
-                    Searching...
+              <Text style={styles.sectionTitle}>
+                {searchResults.length} Results for "{searchQuery}"
+              </Text>
+              {searchResults.map((article) => (
+                <ArticleCard key={article.id} article={article} variant="compact" />
+              ))}
+              {searchResults.length === 0 && (
+                <View style={styles.noResults}>
+                  <Text style={styles.noResultsText}>No articles found</Text>
+                  <Text style={styles.noResultsSubtext}>
+                    Try searching for different keywords
                   </Text>
                 </View>
-              ) : (
-                <>
-                  <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
-                    {searchQueryResult.data?.total || 0} Results for "{searchQuery}"
-                  </Text>
-                  {searchResults.map((article) => (
-                    <ArticleCard key={article.id} article={article} variant="compact" />
-                  ))}
-                  {searchResults.length === 0 && !searchQueryResult.isLoading && (
-                    <View style={styles.noResults}>
-                      <Text style={[styles.noResultsText, { color: colors.text.secondary }]}>
-                        No articles found
-                      </Text>
-                      <Text style={[styles.noResultsSubtext, { color: colors.text.tertiary }]}>
-                        Try searching for different keywords
-                      </Text>
-                    </View>
-                  )}
-                </>
               )}
             </View>
           ) : (
@@ -182,14 +156,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  loadingContainer: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
+    backgroundColor: "#F2F2F7",
   },
   keyboardView: {
     flex: 1,

@@ -1,10 +1,9 @@
-// News Provider using REST API
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import createContextHook from "@nkzw/create-context-hook";
-import { api } from "@/lib/api";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Article, Category } from "@/types/news";
-import { sortArticlesByNewest } from "@/utils/timeUtils";
-import { REFRESH_INTERVALS, ARTICLE_LIMITS } from "@/config/newsConfig";
+import { mockArticles } from "@/mocks/articles";
 
 interface NewsContextType {
   articles: Article[];
@@ -13,96 +12,79 @@ interface NewsContextType {
   error: Error | null;
   refetch: () => void;
   incrementViewCount: (articleId: string) => void;
-  lastUpdated: Date | null;
 }
 
 export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => {
   const [articles, setArticles] = useState<Article[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchArticles = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem("categories");
+      if (stored) return JSON.parse(stored);
       
-      const fetchedArticles = await api.getArticles({
-        limit: ARTICLE_LIMITS.DEFAULT,
-      });
+      const defaultCategories: Category[] = [
+        { id: "tech", name: "Technology", slug: "tech" },
+        { id: "business", name: "Business", slug: "business" },
+        { id: "world", name: "World", slug: "world" },
+        { id: "health", name: "Health", slug: "health" },
+        { id: "gaming", name: "Gaming", slug: "gaming" },
+        { id: "science", name: "Science", slug: "science" },
+      ];
       
-      // Filter out old mock articles (numeric IDs)
-      const filteredArticles = fetchedArticles.filter((article: Article) => {
-        const id = article.id.toLowerCase();
-        return !/^[0-9]+$/.test(id);
-      });
-      
-      const sortedArticles = sortArticlesByNewest(filteredArticles);
-      setArticles(sortedArticles);
-      setLastUpdated(new Date());
-      
-      console.log(`✅ Fetched ${sortedArticles.length} articles`);
-    } catch (err) {
-      console.error("❌ Error fetching articles:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch articles"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      await AsyncStorage.setItem("categories", JSON.stringify(defaultCategories));
+      return defaultCategories;
+    },
+  });
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const fetchedCategories = await api.getCategories();
-      setCategories(fetchedCategories);
-    } catch (err) {
-      console.error("❌ Error fetching categories:", err);
-    }
-  }, []);
+  const articlesQuery = useQuery({
+    queryKey: ["articles"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem("articles");
+      if (stored) {
+        const parsedArticles = JSON.parse(stored);
+        if (parsedArticles.length > 0) return parsedArticles;
+      }
+      
+      await AsyncStorage.setItem("articles", JSON.stringify(mockArticles));
+      return mockArticles;
+    },
+  });
 
-  // Initial fetch
+  const updateArticlesMutation = useMutation({
+    mutationFn: async (updatedArticles: Article[]) => {
+      await AsyncStorage.setItem("articles", JSON.stringify(updatedArticles));
+      return updatedArticles;
+    },
+    onSuccess: (data) => {
+      setArticles(data);
+    },
+  });
+
   useEffect(() => {
-    console.log("📰 NewsProvider mounted - fetching data...");
-    fetchArticles();
-    fetchCategories();
-
-    // Auto-refresh interval
-    const interval = setInterval(() => {
-      fetchArticles();
-    }, REFRESH_INTERVALS.ARTICLES);
-
-    return () => clearInterval(interval);
-  }, [fetchArticles, fetchCategories]);
-
-  const refetch = useCallback(() => {
-    console.log("🔄 Manual refresh triggered");
-    fetchArticles();
-    fetchCategories();
-  }, [fetchArticles, fetchCategories]);
-
-  const incrementViewCount = useCallback(async (articleId: string) => {
-    try {
-      await api.incrementViewCount(articleId);
-      // Update local state
-      setArticles((prev) =>
-        prev.map((article) =>
-          article.id === articleId
-            ? { ...article, viewCount: article.viewCount + 1 }
-            : article
-        )
-      );
-    } catch (err) {
-      console.error("❌ Error incrementing view count:", err);
+    if (articlesQuery.data) {
+      setArticles(articlesQuery.data);
     }
-  }, []);
+  }, [articlesQuery.data]);
+
+  const incrementViewCount = useCallback((articleId: string) => {
+    const updatedArticles = articles.map(article =>
+      article.id === articleId
+        ? { ...article, viewCount: article.viewCount + 1 }
+        : article
+    );
+    updateArticlesMutation.mutate(updatedArticles);
+  }, [articles]);
 
   return {
     articles,
-    categories,
-    isLoading,
-    error,
-    refetch,
+    categories: categoriesQuery.data || [],
+    isLoading: articlesQuery.isLoading || categoriesQuery.isLoading,
+    error: articlesQuery.error || categoriesQuery.error,
+    refetch: () => {
+      articlesQuery.refetch();
+      categoriesQuery.refetch();
+    },
     incrementViewCount,
-    lastUpdated,
   };
 });

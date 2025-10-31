@@ -1,41 +1,28 @@
 {
   "expo": {
-    "name": "AvisoNews",
-    "slug": "aviso-news",
-    "version": "2.0.0",
+    "name": "Aviso News on rork.com",
+    "slug": "aviso-news-rork-com",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "avisonews",
+    "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0071E3"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.aviso.news",
-      "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ],
-        "NSMicrophoneUsageDescription": "AvisoNews uses your microphone to provide audio news narration.",
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "bundleIdentifier": "app.rork.aviso-news-rork-com"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0071E3"
+        "backgroundColor": "#ffffff"
       },
-      "package": "app.aviso.news",
-      "permissions": [
-        "RECORD_AUDIO",
-        "INTERNET",
-        "ACCESS_NETWORK_STATE"
-      ],
-      "versionCode": 2
+      "package": "app.rork.aviso-news-rork-com"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -45,12 +32,6 @@
         "expo-router",
         {
           "origin": "https://rork.com/"
-        }
-      ],
-      [
-        "expo-av",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
         }
       ]
     ],

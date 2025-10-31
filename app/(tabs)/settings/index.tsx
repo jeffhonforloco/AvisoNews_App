@@ -16,129 +16,77 @@ import {
   Mail,
   ChevronRight,
   LogOut,
-  User,
-  Crown,
-  LogIn,
 } from "lucide-react-native";
-import { useRouter } from "expo-router";
 import { usePreferences } from "@/providers/PreferencesProvider";
-import { useTheme } from "@/providers/ThemeProvider";
-import { useLocalization } from "@/providers/LocalizationProvider";
-import { useAuth } from "@/providers/AuthProvider";
 
 export default function SettingsScreen() {
   const { preferences, updatePreference } = usePreferences();
-  const { colors } = useTheme();
-  const { t, currentLanguage } = useLocalization();
-  const { user, isAuthenticated, logout } = useAuth();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await logout();
-  };
-
-  const handleLogin = () => {
-    router.push('/auth');
-  };
 
   const settingsSections = [
-    ...(isAuthenticated ? [{
-      title: 'Account',
-      items: [
-        {
-          icon: User,
-          label: user?.name || 'Profile',
-          type: "link" as const,
-          value: user?.email,
-          onPress: () => {
-            // Navigate to profile
-            console.log('Navigate to profile');
-          },
-        },
-        {
-          icon: Crown,
-          label: 'Subscription',
-          type: "link" as const,
-          value: user?.plan === 'premium' ? 'Premium' : 'Free',
-          onPress: () => router.push('/subscription'),
-        },
-      ],
-    }] : []),
     {
-      title: t('preferences'),
+      title: "Preferences",
       items: [
         {
           icon: Bell,
-          label: t('pushNotifications'),
-          type: "switch" as const,
-          key: "pushNotifications" as const,
+          label: "Push Notifications",
+          type: "switch",
+          key: "pushNotifications",
           value: preferences.pushNotifications,
         },
         {
           icon: Mail,
-          label: t('newsletter'),
-          type: "switch" as const,
-          key: "newsletter" as const,
+          label: "Newsletter",
+          type: "switch",
+          key: "newsletter",
           value: preferences.newsletter,
         },
         {
           icon: Moon,
-          label: t('darkMode'),
-          type: "switch" as const,
-          key: "readingPreferences.theme" as const,
-          value: preferences.readingPreferences.theme === 'dark',
+          label: "Dark Mode",
+          type: "switch",
+          key: "darkMode",
+          value: preferences.darkMode,
         },
         {
           icon: Globe,
-          label: t('language'),
-          type: "link" as const,
-          value: `${currentLanguage.flag} ${currentLanguage.nativeName}`,
-          onPress: () => router.push('/language-selection'),
+          label: "Language",
+          type: "link",
+          value: "English",
         },
       ],
     },
     {
-      title: t('about'),
+      title: "About",
       items: [
         {
           icon: Info,
-          label: t('aboutAvisoNews'),
-          type: "link" as const,
-          onPress: () => router.push('/about'),
+          label: "About AvisoNews",
+          type: "link",
         },
         {
           icon: Shield,
-          label: t('privacyPolicy'),
-          type: "link" as const,
-          onPress: () => router.push('/privacy-policy'),
+          label: "Privacy Policy",
+          type: "link",
         },
         {
           icon: Mail,
-          label: t('contactUs'),
-          type: "link" as const,
-          onPress: () => router.push('/contact'),
+          label: "Contact Us",
+          type: "link",
         },
       ],
     },
   ];
 
   const handleToggle = (key: string, value: boolean) => {
-    if (key === 'readingPreferences.theme') {
-      updatePreference('readingPreferences', {
-        ...preferences.readingPreferences,
-        theme: value ? 'dark' : 'light',
-      });
-    } else {
-      updatePreference(key as keyof typeof preferences, value);
-    }
+    updatePreference(key as keyof typeof preferences, value);
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background.secondary }]} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {settingsSections.map((section, sectionIndex) => (
         <View key={sectionIndex} style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text.secondary }]}>{section.title}</Text>
-          <View style={[styles.sectionContent, { backgroundColor: colors.background.card, borderColor: colors.border.primary }]}>
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+          <View style={styles.sectionContent}>
             {section.items.map((item, itemIndex) => {
               const Icon = item.icon;
               return (
@@ -146,33 +94,31 @@ export default function SettingsScreen() {
                   key={itemIndex}
                   style={[
                     styles.settingItem,
-                    { borderBottomColor: colors.border.primary },
                     itemIndex === section.items.length - 1 && styles.lastItem,
                   ]}
                   activeOpacity={item.type === "link" ? 0.7 : 1}
                   disabled={item.type === "switch"}
-                  onPress={item.type === "link" ? item.onPress : undefined}
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
                       <Icon size={20} color="#FF6B6B" />
                     </View>
-                    <Text style={[styles.settingLabel, { color: colors.text.primary }]}>{item.label}</Text>
+                    <Text style={styles.settingLabel}>{item.label}</Text>
                   </View>
                   <View style={styles.settingRight}>
                     {item.type === "switch" ? (
                       <Switch
                         value={item.value}
                         onValueChange={(value) => handleToggle(item.key!, value)}
-                        trackColor={{ false: colors.border.primary, true: colors.primary }}
-                        thumbColor={colors.background.card}
+                        trackColor={{ false: "#E5E5EA", true: "#FF6B6B" }}
+                        thumbColor="#FFFFFF"
                       />
                     ) : (
                       <View style={styles.linkRight}>
-                        {'value' in item && item.value && (
-                          <Text style={[styles.linkValue, { color: colors.text.secondary }]}>{item.value}</Text>
+                        {item.value && (
+                          <Text style={styles.linkValue}>{item.value}</Text>
                         )}
-                        <ChevronRight size={18} color={colors.text.tertiary} />
+                        <ChevronRight size={18} color="#C7C7CC" />
                       </View>
                     )}
                   </View>
@@ -183,27 +129,14 @@ export default function SettingsScreen() {
         </View>
       ))}
 
-      {isAuthenticated ? (
-        <TouchableOpacity 
-          style={[styles.logoutButton, { backgroundColor: colors.background.card, borderColor: colors.status.error }]}
-          onPress={handleLogout}
-        >
-          <LogOut size={20} color={colors.status.error} />
-          <Text style={[styles.logoutText, { color: colors.status.error }]}>{t('signOut')}</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity 
-          style={[styles.loginButton, { backgroundColor: colors.primary }]}
-          onPress={handleLogin}
-        >
-          <LogIn size={20} color="#FFFFFF" />
-          <Text style={styles.loginText}>Sign In / Sign Up</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity style={styles.logoutButton}>
+        <LogOut size={20} color="#FF3B30" />
+        <Text style={styles.logoutText}>Sign Out</Text>
+      </TouchableOpacity>
 
       <View style={styles.footer}>
-        <Text style={[styles.version, { color: colors.text.secondary }]}>{t('version')} 1.0.0</Text>
-        <Text style={[styles.copyright, { color: colors.text.tertiary }]}>© 2025 AvisoNews</Text>
+        <Text style={styles.version}>Version 1.0.0</Text>
+        <Text style={styles.copyright}>© 2025 AvisoNews</Text>
       </View>
     </ScrollView>
   );
@@ -212,6 +145,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#F2F2F7",
   },
   section: {
     marginTop: 20,
@@ -225,8 +159,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sectionContent: {
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderBottomWidth: 1,
+    borderColor: "#E5E5EA",
   },
   settingItem: {
     flexDirection: "row",
@@ -235,6 +171,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
   },
   lastItem: {
     borderBottomWidth: 0,
@@ -255,6 +192,7 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
+    color: "#1C1C1E",
   },
   settingRight: {
     flexDirection: "row",
@@ -266,37 +204,26 @@ const styles = StyleSheet.create({
   },
   linkValue: {
     fontSize: 15,
+    color: "#8E8E93",
     marginRight: 4,
   },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#FFFFFF",
     marginTop: 40,
     marginHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: "#FF3B30",
   },
   logoutText: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#FF3B30",
     marginLeft: 8,
-  },
-  loginButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 40,
-    marginHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  loginText: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-    color: "#FFFFFF",
   },
   footer: {
     alignItems: "center",
@@ -304,9 +231,11 @@ const styles = StyleSheet.create({
   },
   version: {
     fontSize: 13,
+    color: "#8E8E93",
     marginBottom: 4,
   },
   copyright: {
     fontSize: 12,
+    color: "#C7C7CC",
   },
 });
