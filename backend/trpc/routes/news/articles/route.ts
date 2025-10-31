@@ -159,15 +159,26 @@ export const getArticles = publicProcedure
   )
   .query(async ({ input }) => {
     // CRITICAL: Ensure news is initialized and loaded BEFORE returning
-    await ensureInitialized();
+    try {
+      await ensureInitialized();
+    } catch (error) {
+      console.error("❌ Initialization failed in getArticles:", error);
+      // Continue anyway - might have fallback articles
+    }
     
-    // Wait a bit more if store is still empty (initialization might be in progress)
+    // If store is still empty after initialization, wait a bit more
     if (articlesStore.length === 0) {
-      console.log("⏳ Store is empty, waiting for initialization to complete...");
+      console.log("⏳ Store is empty after initialization, waiting...");
       let retries = 0;
-      while (articlesStore.length === 0 && retries < 10) {
+      const maxRetries = 20; // 10 seconds total
+      while (articlesStore.length === 0 && retries < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 500));
         retries++;
+      }
+      
+      // If still empty, throw helpful error
+      if (articlesStore.length === 0) {
+        throw new Error("Backend initialization timed out. RSS feeds may be unavailable. Please try again in a moment.");
       }
     }
     

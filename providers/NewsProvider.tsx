@@ -64,49 +64,50 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
     [incrementViewMutation]
   );
 
-  // Use ONLY real articles from API - NO MOCK, NO FALLBACK
-  // Backend must provide real data from RSS feeds
+  // Get articles from API
   const rawArticles = articlesQuery.data?.articles || [];
   
-  // Filter out any mock/fallback articles that might slip through
-  const realArticles = rawArticles.filter((article: Article) => {
-    const id = article.id.toLowerCase();
-    // Exclude numeric IDs (old mock articles) and fallback articles
-    const isNotMock = !/^[0-9]+$/.test(id);
-    const isNotFallback = !id.startsWith('fallback-');
-    const hasRealUrl = article.canonicalUrl && 
-                       !article.canonicalUrl.includes('example.com') &&
-                       !article.canonicalUrl.includes('techcrunch.com/openai-gpt5'); // Old mock URL
-    
-    return isNotMock && isNotFallback && hasRealUrl;
-  });
-  
-  // Always use filtered real articles only
-  const articles = sortArticlesByNewest(realArticles);
+  // Filter out ONLY old mock articles (numeric IDs) - allow fallback articles temporarily
+  // This ensures users see content while real RSS feeds are loading
+  const articles = sortArticlesByNewest(
+    rawArticles.filter((article: Article) => {
+      const id = article.id.toLowerCase();
+      // Only filter out old mock articles with simple numeric IDs
+      // Allow fallback articles and any real articles
+      const isNotOldMock = !/^[0-9]+$/.test(id);
+      return isNotOldMock;
+    })
+  );
   
   // Log for debugging
   useEffect(() => {
     if (rawArticles.length > 0) {
-      console.log(`📰 Frontend received ${rawArticles.length} total articles, ${realArticles.length} are REAL`);
-      if (realArticles.length === 0 && rawArticles.length > 0) {
-        console.warn("⚠️ WARNING: All articles were filtered out as mock/fallback. Check backend initialization.");
-      }
+      const realCount = rawArticles.filter((a: Article) => {
+        const id = a.id.toLowerCase();
+        return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-');
+      }).length;
+      const fallbackCount = rawArticles.filter((a: Article) => a.id.toLowerCase().startsWith('fallback-')).length;
+      console.log(`📰 Frontend: ${rawArticles.length} total (${realCount} real, ${fallbackCount} fallback)`);
     } else if (articlesQuery.isSuccess && rawArticles.length === 0) {
       console.warn("⚠️ API returned empty array. Backend may still be initializing.");
     }
-  }, [rawArticles.length, realArticles.length]);
+    if (articlesQuery.error) {
+      console.error("❌ Articles query error:", articlesQuery.error);
+    }
+  }, [rawArticles.length, articlesQuery.error, articlesQuery.isSuccess]);
   
   const categories = categoriesQuery.data || [];
   const lastUpdated = articlesQuery.dataUpdatedAt 
     ? new Date(articlesQuery.dataUpdatedAt) 
     : null;
 
-  // Only show error if we have an actual error AND no data AND not loading
-  // Show error if API failed AND we have no articles (real or otherwise)
+  // Show error if API failed AND we have no articles AND not currently loading/fetching
+  // Also show error if query failed and we're not retrying
   const shouldShowError = articlesQuery.error && 
                           articles.length === 0 && 
                           !articlesQuery.isLoading &&
-                          !articlesQuery.isFetching;
+                          !articlesQuery.isFetching &&
+                          articlesQuery.failureCount >= 2; // Only show after retries fail
 
   const refetch = useCallback(() => {
     console.log("🔄 Manual refresh triggered");

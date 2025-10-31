@@ -116,14 +116,28 @@ export default function HomeScreen() {
   }
 
   // Only show error if we have an error AND no articles AND not loading
-  // Since we now always have fallback articles, this should rarely trigger
+  // Show helpful error message with context
   if (error && articles.length === 0 && !isLoading) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isTimeout = errorMessage.includes("timeout") || errorMessage.includes("timed out");
+    const isConnectionError = errorMessage.includes("Failed to fetch") || errorMessage.includes("Network");
+    
     return (
       <View style={[styles.errorContainer, { backgroundColor: colors.background.primary }]}>
         <AlertCircle size={48} color={colors.text.secondary} />
-        <Text style={[styles.errorText, { color: colors.text.primary }]}>Unable to load news</Text>
+        <Text style={[styles.errorText, { color: colors.text.primary }]}>
+          {isTimeout 
+            ? "Loading is taking longer than expected"
+            : isConnectionError
+            ? "Cannot connect to server"
+            : "Unable to load news"}
+        </Text>
         <Text style={[styles.errorSubtext, { color: colors.text.secondary }]}>
-          Please check your connection and try again
+          {isTimeout
+            ? "The backend is fetching news from RSS feeds. This may take 10-15 seconds on first load. Please wait..."
+            : isConnectionError
+            ? "Please ensure the backend server is running and accessible. Check your network connection."
+            : errorMessage || "Please check your connection and try again"}
         </Text>
         <TouchableOpacity 
           style={[styles.retryButton, { backgroundColor: colors.primary }]} 

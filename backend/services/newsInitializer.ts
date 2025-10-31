@@ -96,13 +96,24 @@ export async function initializeNewsStore(): Promise<void> {
       // Try a simpler direct fetch without proxy
       await tryDirectRSSFetch();
       
-      // If still no articles, use generated fallback articles
+      // Check if we got articles from direct fetch
       const store = await import("@/backend/trpc/routes/news/articles/route");
       const currentCount = store.getArticlesStore().length;
+      
+      // ALWAYS ensure we have some content - use fallback if needed
       if (currentCount === 0) {
+        console.log("📝 No RSS articles available, generating fallback articles...");
         const fallbackArticles = generateFallbackArticles();
-        addArticlesToStore(fallbackArticles);
+        const storeModule = await import("@/backend/trpc/routes/news/articles/route");
+        // Ensure fallbacks are allowed when store is empty
+        storeModule.setAllowFallbackArticles(true);
+        storeModule.addArticlesToStore(fallbackArticles);
         console.log(`✅ Added ${fallbackArticles.length} fallback articles to ensure app has content`);
+      } else {
+        console.log(`✅ Direct fetch provided ${currentCount} articles`);
+        // Once we have real articles, disable fallbacks
+        const storeModule = await import("@/backend/trpc/routes/news/articles/route");
+        storeModule.setAllowFallbackArticles(false);
       }
     }
 
@@ -120,8 +131,10 @@ export async function initializeNewsStore(): Promise<void> {
       
       // If still no articles, use generated fallback
       if (currentCount === 0) {
+        const storeModule = await import("@/backend/trpc/routes/news/articles/route");
+        storeModule.setAllowFallbackArticles(true);
         const fallbackArticles = generateFallbackArticles();
-        addArticlesToStore(fallbackArticles);
+        storeModule.addArticlesToStore(fallbackArticles);
         console.log(`✅ Added ${fallbackArticles.length} fallback articles after error`);
       }
     } catch (fallbackError) {
@@ -130,8 +143,9 @@ export async function initializeNewsStore(): Promise<void> {
       const store = await import("@/backend/trpc/routes/news/articles/route");
       const currentCount = store.getArticlesStore().length;
       if (currentCount === 0) {
+        store.setAllowFallbackArticles(true);
         const fallbackArticles = generateFallbackArticles();
-        addArticlesToStore(fallbackArticles);
+        store.addArticlesToStore(fallbackArticles);
         console.log(`✅ Added ${fallbackArticles.length} fallback articles as last resort`);
       }
     }
