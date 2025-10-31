@@ -4,18 +4,44 @@ import { cors } from "hono/cors";
 import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
 
-// Log router structure for debugging
-try {
-  const routerRecord = appRouter._def?.record;
-  if (routerRecord) {
-    console.log("✅ Router loaded. Available routes:", Object.keys(routerRecord));
-    console.log("📰 News routes:", routerRecord.news ? Object.keys(routerRecord.news._def?.record || {}) : "Not found");
-  } else {
-    console.warn("⚠️ Router record not found");
+// Log router structure for debugging on server start
+function logRouterStructure() {
+  try {
+    const routerRecord = appRouter._def?.record;
+    if (routerRecord) {
+      console.log("✅ Router loaded. Top-level routes:", Object.keys(routerRecord));
+      
+      // Check news router
+      if (routerRecord.news && (routerRecord.news as any)._def?.record) {
+        const newsRecord = (routerRecord.news as any)._def.record;
+        console.log("📰 News router sub-routes:", Object.keys(newsRecord));
+        
+        // Check articles router
+        if (newsRecord.articles && (newsRecord.articles as any)._def?.record) {
+          const articlesRecord = (newsRecord.articles as any)._def.record;
+          console.log("📄 Articles router procedures:", Object.keys(articlesRecord));
+          
+          if (articlesRecord.list) {
+            console.log("✅ 'list' procedure found in articles router!");
+          } else {
+            console.error("❌ 'list' procedure NOT found in articles router!");
+            console.error("Available procedures:", Object.keys(articlesRecord));
+          }
+        } else {
+          console.error("❌ Articles router not found or has no record");
+        }
+      } else {
+        console.error("❌ News router not found or has no record");
+      }
+    } else {
+      console.warn("⚠️ Router record not found");
+    }
+  } catch (error) {
+    console.warn("⚠️ Could not inspect router structure:", error);
   }
-} catch (error) {
-  console.warn("⚠️ Could not inspect router structure:", error);
 }
+
+logRouterStructure();
 
 // app will be mounted at /api
 const app = new Hono();
@@ -23,30 +49,25 @@ const app = new Hono();
 // Enable CORS for all routes
 app.use("*", cors());
 
-// Mount tRPC router - IMPORTANT: Use app.all to handle all HTTP methods (GET, POST)
-// tRPC uses POST for mutations and queries can use GET or POST
-app.all("/trpc/*", async (c) => {
-  console.log("📡 Incoming tRPC request:", c.req.method, c.req.path);
-  
-  // Create the tRPC server handler
-  const handler = trpcServer({
+// Mount tRPC router
+// @hono/trpc-server returns a Hono middleware that handles the routing
+app.use(
+  "/trpc/*",
+  trpcServer({
     router: appRouter,
     createContext: async (opts) => {
-      console.log("📡 Creating context for:", opts.req.method, opts.req.url);
+      console.log("📡 tRPC request:", opts.req.method, opts.req.url);
       return await createContext(opts);
     },
-    onError: ({ error, path, type, ctx }) => {
+    onError: ({ error, path, type }) => {
       console.error(`❌ tRPC Error on ${path} (${type}):`, error);
-      if (error.code === 'NOT_FOUND') {
-        console.error(`❌ Procedure not found! Looking for: ${path}`);
+      if ((error as any).code === 'NOT_FOUND') {
+        console.error(`❌ Procedure NOT FOUND: ${path}`);
         console.error("Available router structure:", JSON.stringify(getRouterStructure(appRouter), null, 2));
       }
     },
-  });
-  
-  // Execute the handler
-  return handler(c.req.raw, c.env, c.executionCtx);
-});
+  })
+);
 
 // Helper to inspect router structure
 function getRouterStructure(router: any): any {
