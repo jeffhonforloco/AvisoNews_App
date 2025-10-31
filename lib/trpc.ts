@@ -42,7 +42,7 @@ const getAuthHeaders = async () => {
 export const trpcClient = trpc.createClient({
   links: [
     httpLink({
-      url: `${getBaseUrl()}/api/trpc`,
+      url: `${getBaseUrl()}/api/trpc`,  // Frontend expects /api/trpc (Rork mounts server at /api, then /trpc from server)
       transformer: superjson,
       async headers() {
         return await getAuthHeaders();
