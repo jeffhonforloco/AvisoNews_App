@@ -19,9 +19,10 @@ import {
 import { aggregateNews } from "./services/newsAggregator";
 import { forceUpdate } from "./jobs/newsUpdater";
 
+console.log("🔧 Creating Hono app instance...");
 const app = new Hono();
 
-console.log("🔧 Creating Hono app instance...");
+console.log("🔧 Middleware setup starting...");
 
 // Middleware
 app.use("*", logger());
@@ -129,7 +130,7 @@ app.get("/articles", (c) => {
 });
 
 app.get("/api/articles", (c) => {
-  console.log("📰 GET /api/articles");
+  console.log("📰 GET /api/articles - Handler called!");
   try {
     const category = c.req.query("category");
     const limit = parseInt(c.req.query("limit") || "20");
@@ -137,6 +138,8 @@ app.get("/api/articles", (c) => {
     const featured = c.req.query("featured") === "true";
     const breaking = c.req.query("breaking") === "true";
 
+    console.log(`📰 Query params: category=${category}, limit=${limit}, offset=${offset}`);
+    
     const articles = getArticles({
       category,
       limit,
@@ -157,32 +160,7 @@ app.get("/api/articles", (c) => {
   }
 });
 
-// CATEGORIES ROUTES - Try every possible path
-app.get("/categories", (c) => {
-  console.log("📂 GET /categories - Handler called!");
-  try {
-    const categories = getCategories();
-    console.log(`✅ Returning ${categories.length} categories from store`);
-    return c.json({ success: true, data: categories });
-  } catch (error) {
-    console.error("❌ Error in /categories:", error);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-app.get("/api/categories", (c) => {
-  console.log("📂 GET /api/categories");
-  try {
-    const categories = getCategories();
-    console.log(`✅ Returning ${categories.length} categories from /api/categories`);
-    return c.json({ success: true, data: categories });
-  } catch (error) {
-    console.error("❌ Error in /api/categories:", error);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
-// Other routes with same pattern
+// Other article routes
 app.get("/articles/:id", (c) => {
   const id = c.req.param("id");
   const article = getArticleById(id);
@@ -243,6 +221,31 @@ app.get("/api/articles/:id/related", (c) => {
   const limit = parseInt(c.req.query("limit") || "3");
   const related = getRelatedArticles(id, limit);
   return c.json({ success: true, data: related });
+});
+
+// CATEGORIES ROUTES - Try every possible path
+app.get("/categories", (c) => {
+  console.log("📂 GET /categories - Handler called!");
+  try {
+    const categories = getCategories();
+    console.log(`✅ Returning ${categories.length} categories from store`);
+    return c.json({ success: true, data: categories });
+  } catch (error) {
+    console.error("❌ Error in /categories:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.get("/api/categories", (c) => {
+  console.log("📂 GET /api/categories - Handler called!");
+  try {
+    const categories = getCategories();
+    console.log(`✅ Returning ${categories.length} categories from /api/categories`);
+    return c.json({ success: true, data: categories });
+  } catch (error) {
+    console.error("❌ Error in /api/categories:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
 });
 
 app.get("/categories/:slug", (c) => {
@@ -315,7 +318,7 @@ app.all("*", async (c, next) => {
   const method = c.req.method;
   
   // If it's already handled, skip
-  if (path === "/" || path.startsWith("/articles") || path.startsWith("/categories") || path.startsWith("/sources") || path.startsWith("/api")) {
+  if (path === "/" || path.startsWith("/articles") || path.startsWith("/categories") || path.startsWith("/sources") || path.startsWith("/api") || path.startsWith("/test") || path.startsWith("/stats") || path.startsWith("/admin")) {
     return next();
   }
   
@@ -351,6 +354,8 @@ app.notFound((c) => {
     registeredRoutes: [
       "GET /",
       "GET /api",
+      "GET /test",
+      "GET /api/test",
       "GET /articles",
       "GET /api/articles",
       "GET /categories",
@@ -380,6 +385,8 @@ console.log("\n✅ === HONO APP CONFIGURED ===");
 console.log("Registered routes:");
 console.log("  GET  /");
 console.log("  GET  /api");
+console.log("  GET  /test");
+console.log("  GET  /api/test");
 console.log("  GET  /articles");
 console.log("  GET  /api/articles");
 console.log("  GET  /categories");
