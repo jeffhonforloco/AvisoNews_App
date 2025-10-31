@@ -6,6 +6,15 @@ import { Article } from "@/types/news";
 // In-memory store (in production, this would be a database)
 let articlesStore: Article[] = [...mockArticles];
 
+// Export getter function for use in other modules
+export function getArticlesStore(): Article[] {
+  return articlesStore;
+}
+
+export function addArticlesToStore(articles: Article[]): void {
+  articlesStore.push(...articles);
+}
+
 export const getArticles = publicProcedure
   .input(
     z

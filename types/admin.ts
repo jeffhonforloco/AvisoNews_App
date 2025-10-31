@@ -66,6 +66,10 @@ export interface ArticleModeration {
 export interface AutomationConfig {
   id: string;
   sourceId: string;
+  sourceName?: string;
+  apiType?: "newsapi" | "rss" | "googlenews" | "newsdata";
+  feedUrl?: string;
+  apiKey?: string;
   enabled: boolean;
   fetchInterval: number; // minutes
   autoPublish: boolean;
