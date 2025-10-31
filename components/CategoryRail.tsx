@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { ChevronRight } from "lucide-react-native";
-import { router } from "expo-router";
 import { Article } from "@/types/news";
 import ArticleCard from "./ArticleCard";
 
@@ -25,7 +24,7 @@ export default function CategoryRail({
   color = "#007AFF",
 }: CategoryRailProps) {
   const handleSeeAll = () => {
-    router.push(`/category/${category}`);
+    console.log("Navigate to category:", category);
   };
 
   return (

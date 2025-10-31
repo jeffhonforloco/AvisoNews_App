@@ -5,6 +5,7 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import { ChevronRight, Cpu, DollarSign, Globe, Heart, Gamepad2, Microscope } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,7 +16,7 @@ const categories = [
     id: "tech",
     name: "Technology",
     icon: Cpu,
-    gradient: ["#667EEA", "#764BA2"] as const,
+    gradient: ["#667EEA", "#764BA2"],
     description: "Latest in tech and innovation",
     count: 156,
   },
@@ -23,7 +24,7 @@ const categories = [
     id: "business",
     name: "Business",
     icon: DollarSign,
-    gradient: ["#F093FB", "#F5576C"] as const,
+    gradient: ["#F093FB", "#F5576C"],
     description: "Markets, finance, and economy",
     count: 243,
   },
@@ -31,7 +32,7 @@ const categories = [
     id: "world",
     name: "World",
     icon: Globe,
-    gradient: ["#4FACFE", "#00F2FE"] as const,
+    gradient: ["#4FACFE", "#00F2FE"],
     description: "Global news and events",
     count: 189,
   },
@@ -39,7 +40,7 @@ const categories = [
     id: "health",
     name: "Health",
     icon: Heart,
-    gradient: ["#FA709A", "#FEE140"] as const,
+    gradient: ["#FA709A", "#FEE140"],
     description: "Health and wellness updates",
     count: 97,
   },
@@ -47,7 +48,7 @@ const categories = [
     id: "gaming",
     name: "Gaming",
     icon: Gamepad2,
-    gradient: ["#30CFD0", "#330867"] as const,
+    gradient: ["#30CFD0", "#330867"],
     description: "Gaming news and reviews",
     count: 64,
   },
@@ -55,7 +56,7 @@ const categories = [
     id: "science",
     name: "Science",
     icon: Microscope,
-    gradient: ["#A8EDEA", "#FED6E3"] as const,
+    gradient: ["#A8EDEA", "#FED6E3"],
     description: "Scientific discoveries",
     count: 82,
   },
@@ -63,17 +64,12 @@ const categories = [
 
 export default function CategoriesScreen() {
   const handleCategoryPress = (categoryId: string) => {
-    router.push(`/category/${categoryId}`);
+    console.log("Navigate to category:", categoryId);
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Categories</Text>
-        <Text style={styles.subtitle}>Explore news by topic</Text>
-      </View>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.grid}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.grid}>
         {categories.map((category) => {
           const Icon = category.icon;
           return (
@@ -104,9 +100,8 @@ export default function CategoriesScreen() {
             </TouchableOpacity>
           );
         })}
-        </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -114,26 +109,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F2F2F7",
-  },
-  header: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: "700",
-    color: "#1C1C1E",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#8E8E93",
-  },
-  scrollView: {
-    flex: 1,
   },
   grid: {
     padding: 16,
