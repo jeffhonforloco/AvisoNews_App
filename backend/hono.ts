@@ -40,9 +40,10 @@ app.get("/", (c) => {
 });
 
 // API Routes
+// NOTE: Rork mounts the server at /api, so routes should NOT include /api prefix
 
 // Articles
-app.get("/api/articles", (c) => {
+app.get("/articles", (c) => {
   const category = c.req.query("category");
   const limit = parseInt(c.req.query("limit") || "20");
   const offset = parseInt(c.req.query("offset") || "0");
@@ -64,7 +65,7 @@ app.get("/api/articles", (c) => {
   });
 });
 
-app.get("/api/articles/:id", (c) => {
+app.get("/articles/:id", (c) => {
   const id = c.req.param("id");
   const article = getArticleById(id);
 
@@ -75,13 +76,13 @@ app.get("/api/articles/:id", (c) => {
   return c.json({ success: true, data: article });
 });
 
-app.post("/api/articles/:id/view", async (c) => {
+app.post("/articles/:id/view", async (c) => {
   const id = c.req.param("id");
   incrementViewCount(id);
   return c.json({ success: true });
 });
 
-app.get("/api/articles/search", (c) => {
+app.get("/articles/search", (c) => {
   const query = c.req.query("q");
   const limit = parseInt(c.req.query("limit") || "20");
 
@@ -93,7 +94,7 @@ app.get("/api/articles/search", (c) => {
   return c.json({ success: true, data: results, count: results.length });
 });
 
-app.get("/api/articles/:id/related", (c) => {
+app.get("/articles/:id/related", (c) => {
   const id = c.req.param("id");
   const limit = parseInt(c.req.query("limit") || "3");
   const related = getRelatedArticles(id, limit);
@@ -101,12 +102,12 @@ app.get("/api/articles/:id/related", (c) => {
 });
 
 // Categories
-app.get("/api/categories", (c) => {
+app.get("/categories", (c) => {
   const categories = getCategories();
   return c.json({ success: true, data: categories });
 });
 
-app.get("/api/categories/:slug", (c) => {
+app.get("/categories/:slug", (c) => {
   const slug = c.req.param("slug");
   const category = getCategoryBySlug(slug);
 
@@ -118,13 +119,13 @@ app.get("/api/categories/:slug", (c) => {
 });
 
 // Sources
-app.get("/api/sources", (c) => {
+app.get("/sources", (c) => {
   const sources = getSources();
   return c.json({ success: true, data: sources });
 });
 
 // Admin/Management
-app.post("/api/admin/update", async (c) => {
+app.post("/admin/update", async (c) => {
   try {
     const result = await forceUpdate();
     return c.json({
@@ -142,7 +143,7 @@ app.post("/api/admin/update", async (c) => {
   }
 });
 
-app.get("/api/stats", (c) => {
+app.get("/stats", (c) => {
   const stats = getStoreStats();
   return c.json({ success: true, data: stats });
 });
