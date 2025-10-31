@@ -54,6 +54,7 @@ import {
   updateUser,
   deleteUser,
 } from "./routes/admin/users/route";
+import { testNewsFetch } from "./routes/admin/test-news-fetch";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -116,6 +117,7 @@ export const appRouter = createTRPCRouter({
       update: updateUser,
       delete: deleteUser,
     }),
+    testNewsFetch: testNewsFetch,
   }),
 });
 
