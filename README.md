@@ -96,6 +96,7 @@ npm run web
 
 ## 🎯 Key Improvements in v2.0
 
+### Frontend & Design
 - ✅ Premium design system with cohesive colors
 - ✅ Enhanced typography and reading experience
 - ✅ Improved visual hierarchy and spacing
@@ -107,15 +108,53 @@ npm run web
 - ✅ Improved responsive design
 - ✅ Enhanced tab bar styling
 
+### Backend & News Aggregation
+- ✅ **30+ News Sources**: Comprehensive coverage from BBC, Reuters, AP, CNN, TechCrunch, Bloomberg, and more
+- ✅ **Multiple API Support**: RSS feeds, NewsAPI.org, NewsData.io, and Google News RSS
+- ✅ **Enhanced RSS Parsing**: Direct XML parsing with fallback to JSON proxy
+- ✅ **Retry Logic**: Exponential backoff retry mechanism for failed requests
+- ✅ **Smart Deduplication**: URL and title-based duplicate detection
+- ✅ **Intelligent Updates**: Automatic updates every 10 minutes with statistics tracking
+- ✅ **Better Error Handling**: Comprehensive error handling with detailed logging
+- ✅ **Image Extraction**: Enhanced image extraction from multiple RSS feed formats
+- ✅ **Rate Limit Awareness**: Handles API rate limits gracefully
+- ✅ **Performance Optimized**: Parallel fetching with Promise.allSettled
+
+### News Sources Included
+- **World News**: BBC, Reuters, AP, CNN, The Guardian, Al Jazeera
+- **Technology**: TechCrunch, The Verge, Wired, Ars Technica, Engadget
+- **Business**: Bloomberg, Financial Times, CNBC, Reuters Business
+- **Science**: Scientific American, Nature, Science Daily
+- **Health**: Medical News Today
+- **Sports**: ESPN, BBC Sport
+- **Entertainment**: Variety, The Hollywood Reporter
+- **Plus**: NewsAPI.org and NewsData.io integration (when API keys are provided)
+
 See [IMPROVEMENTS.md](./IMPROVEMENTS.md) for detailed improvement documentation.
 
 ## 🔧 Configuration
 
+### App Configuration
 Update `app.json` for:
 - App name and slug
 - Bundle identifiers
 - App icons and splash screens
 - Permissions
+
+### Backend API Keys (Optional but Recommended)
+Create a `.env` file or set environment variables for enhanced news coverage:
+
+```bash
+# NewsAPI.org (Free tier: 100 requests/day)
+# Get your key at https://newsapi.org/register
+NEWSAPI_KEY=your_newsapi_key_here
+
+# NewsData.io (Free tier: 200 requests/day)
+# Get your key at https://newsdata.io/
+NEWSDATA_KEY=your_newsdata_key_here
+```
+
+**Note**: The app works perfectly without API keys using RSS feeds and Google News RSS, which have no rate limits!
 
 ## 📄 License
 

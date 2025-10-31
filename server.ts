@@ -47,9 +47,10 @@ console.log("✅ Server ready for Rork - exporting app NOW");
       console.warn("⚠️ No articles fetched on startup");
     }
 
-    // Start automatic updates (every 5 minutes)
-    startAutoUpdate(5);
-    console.log("✅ Auto-update job started (5 minute intervals)");
+    // Start automatic updates (every 10 minutes for optimal balance)
+    // Note: newsUpdater.ts also auto-starts, but we can override the interval here
+    startAutoUpdate(10);
+    console.log("✅ Auto-update job started (10 minute intervals)");
   } catch (error) {
     console.error("❌ Startup error (non-blocking):", error);
     // Don't throw - allow server to continue running
