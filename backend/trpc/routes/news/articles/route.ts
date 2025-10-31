@@ -107,30 +107,55 @@ export function getArticlesStore(): Article[] {
   return articlesStore;
 }
 
+// Flag to allow fallback articles when no RSS articles are available
+let allowFallbackArticles = true;
+
+export function setAllowFallbackArticles(allow: boolean): void {
+  allowFallbackArticles = allow;
+}
+
 export function addArticlesToStore(articles: Article[]): void {
   if (articles.length === 0) {
     console.warn("⚠️ Attempted to add 0 articles to store");
     return;
   }
   
-  // Filter out any fallback articles (they have IDs starting with "fallback-")
-  // Only accept real articles from RSS feeds
-  const realArticles = articles.filter((article) => {
+  // Filter articles - prefer real RSS articles, but allow fallback if enabled and store is empty
+  const isStoreEmpty = articlesStore.length === 0;
+  const filteredArticles = articles.filter((article) => {
     const id = article.id.toLowerCase();
-    const isNotFallback = !id.startsWith('fallback-');
-    const hasRealUrl = article.canonicalUrl && 
-                       !article.canonicalUrl.includes('example.com');
+    const isFallback = id.startsWith('fallback-');
+    const hasRealUrl = article.canonicalUrl && !article.canonicalUrl.includes('example.com');
     
-    return isNotFallback && hasRealUrl;
+    // Always accept real RSS articles
+    if (!isFallback && hasRealUrl) {
+      return true;
+    }
+    
+    // Allow fallback only if store is empty and fallbacks are enabled
+    if (isFallback && allowFallbackArticles && isStoreEmpty) {
+      console.log("📝 Allowing fallback article to ensure app has content");
+      return true;
+    }
+    
+    return false;
   });
   
-  if (realArticles.length === 0) {
-    console.warn(`⚠️ All ${articles.length} articles were filtered out as fallback/mock`);
-    return;
+  if (filteredArticles.length === 0) {
+    console.warn(`⚠️ All ${articles.length} articles were filtered out`);
+    // If store is empty and we filtered everything, check if we should still add fallbacks
+    if (isStoreEmpty && allowFallbackArticles && articles.some(a => a.id.toLowerCase().startsWith('fallback-'))) {
+      // Force add fallback articles as last resort
+      const fallbackOnly = articles.filter(a => a.id.toLowerCase().startsWith('fallback-'));
+      console.log(`📝 Forcing ${fallbackOnly.length} fallback articles as last resort`);
+      filteredArticles.push(...fallbackOnly);
+    } else {
+      return;
+    }
   }
   
   // Merge with existing articles, removing duplicates by URL
-  const allArticles = [...articlesStore, ...realArticles];
+  const allArticles = [...articlesStore, ...filteredArticles];
   const uniqueArticles = allArticles.reduce((acc, article) => {
     if (!acc.find((a) => a.canonicalUrl === article.canonicalUrl)) {
       acc.push(article);
@@ -138,10 +163,23 @@ export function addArticlesToStore(articles: Article[]): void {
     return acc;
   }, [] as Article[]);
   
-  // Replace entire store with unique real articles
-  articlesStore = uniqueArticles;
+  // Once we have real articles, prioritize them
+  const realArticles = uniqueArticles.filter(a => {
+    const id = a.id.toLowerCase();
+    return !id.startsWith('fallback-') && a.canonicalUrl && !a.canonicalUrl.includes('example.com');
+  });
   
-  console.log(`✅ Store updated: ${uniqueArticles.length} total articles (added ${realArticles.length} new)`);
+  // If we have real articles, use only those (remove fallbacks)
+  if (realArticles.length > 0) {
+    articlesStore = realArticles;
+    console.log(`✅ Store updated: ${realArticles.length} real RSS articles (removed fallbacks)`);
+  } else {
+    // Otherwise keep what we have (including fallbacks if needed)
+    articlesStore = uniqueArticles;
+    const realCount = uniqueArticles.filter(a => !a.id.toLowerCase().startsWith('fallback-')).length;
+    const fallbackCount = uniqueArticles.filter(a => a.id.toLowerCase().startsWith('fallback-')).length;
+    console.log(`✅ Store updated: ${uniqueArticles.length} total (${realCount} real, ${fallbackCount} fallback)`);
+  }
 }
 
 export const getArticles = publicProcedure
