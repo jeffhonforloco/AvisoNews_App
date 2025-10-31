@@ -276,12 +276,33 @@ app.get("/api/stats", (c) => {
   return c.json({ success: true, data: stats });
 });
 
+// Catch-all route handler - matches ANY path to see what's being requested
+app.all("*", async (c, next) => {
+  const path = c.req.path;
+  const method = c.req.method;
+  
+  // If it's already handled, skip
+  if (path === "/" || path.startsWith("/articles") || path.startsWith("/categories") || path.startsWith("/sources") || path.startsWith("/api")) {
+    return next();
+  }
+  
+  console.error(`\n❌ === UNHANDLED ROUTE ===`);
+  console.error(`   Method: ${method}`);
+  console.error(`   Path: ${path}`);
+  console.error(`   Full URL: ${c.req.url}`);
+  console.error(`   Query: ${JSON.stringify(c.req.query())}`);
+  console.error(`========================\n`);
+  
+  return next();
+});
+
 // Catch-all 404 handler with EXTENSIVE logging
 app.notFound((c) => {
   console.error(`\n❌ === 404 NOT FOUND ===`);
   console.error(`   Method: ${c.req.method}`);
   console.error(`   Path: ${c.req.path}`);
   console.error(`   Full URL: ${c.req.url}`);
+  console.error(`   Raw Path: ${c.req.raw.path}`);
   console.error(`   Headers:`, Object.fromEntries(c.req.header()));
   console.error(`   All registered routes should be listed above`);
   console.error(`========================\n`);
@@ -290,9 +311,20 @@ app.notFound((c) => {
     success: false, 
     error: "Endpoint not found",
     path: c.req.path,
+    rawPath: c.req.raw.path,
     method: c.req.method,
     url: c.req.url,
     hint: "Check server logs to see registered routes",
+    registeredRoutes: [
+      "GET /",
+      "GET /api",
+      "GET /articles",
+      "GET /api/articles",
+      "GET /categories",
+      "GET /api/categories",
+      "GET /sources",
+      "GET /api/sources",
+    ],
   }, 404);
 });
 
