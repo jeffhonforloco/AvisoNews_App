@@ -23,20 +23,50 @@ const app = new Hono();
 // Enable CORS for all routes
 app.use("*", cors());
 
-// Mount tRPC router at /trpc
-app.use(
-  "/trpc/*",
-  trpcServer({
+// Mount tRPC router - IMPORTANT: Use app.all to handle all HTTP methods (GET, POST)
+// tRPC uses POST for mutations and queries can use GET or POST
+app.all("/trpc/*", async (c) => {
+  console.log("📡 Incoming tRPC request:", c.req.method, c.req.path);
+  
+  // Create the tRPC server handler
+  const handler = trpcServer({
     router: appRouter,
     createContext: async (opts) => {
-      console.log("📡 tRPC request:", opts.req.url);
+      console.log("📡 Creating context for:", opts.req.method, opts.req.url);
       return await createContext(opts);
     },
-    onError: ({ error, path, type }) => {
-      console.error(`❌ tRPC Error on ${path} (${type}):`, error.message);
+    onError: ({ error, path, type, ctx }) => {
+      console.error(`❌ tRPC Error on ${path} (${type}):`, error);
+      if (error.code === 'NOT_FOUND') {
+        console.error(`❌ Procedure not found! Looking for: ${path}`);
+        console.error("Available router structure:", JSON.stringify(getRouterStructure(appRouter), null, 2));
+      }
     },
-  })
-);
+  });
+  
+  // Execute the handler
+  return handler(c.req.raw, c.env, c.executionCtx);
+});
+
+// Helper to inspect router structure
+function getRouterStructure(router: any): any {
+  try {
+    const record = router._def?.record;
+    if (!record) return { error: "No _def.record found" };
+    
+    const structure: any = {};
+    for (const [key, value] of Object.entries(record)) {
+      if ((value as any)?._def?.record) {
+        structure[key] = Object.keys((value as any)._def.record);
+      } else {
+        structure[key] = "procedure";
+      }
+    }
+    return structure;
+  } catch (error) {
+    return { error: String(error) };
+  }
+}
 
 // Simple health check endpoint
 app.get("/", (c) => {
