@@ -108,33 +108,40 @@ export function getArticlesStore(): Article[] {
 }
 
 export function addArticlesToStore(articles: Article[]): void {
-  // Filter out mock articles (they have simple numeric IDs like "1", "2")
-  // and fallback articles (they have IDs starting with "fallback-")
-  const isRealArticle = (article: Article) => {
+  if (articles.length === 0) {
+    console.warn("⚠️ Attempted to add 0 articles to store");
+    return;
+  }
+  
+  // Filter out any fallback articles (they have IDs starting with "fallback-")
+  // Only accept real articles from RSS feeds
+  const realArticles = articles.filter((article) => {
     const id = article.id.toLowerCase();
-    // Mock articles have simple numeric IDs, real articles have complex IDs with timestamps
-    return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-');
-  };
+    const isNotFallback = !id.startsWith('fallback-');
+    const hasRealUrl = article.canonicalUrl && 
+                       !article.canonicalUrl.includes('example.com');
+    
+    return isNotFallback && hasRealUrl;
+  });
   
-  // Get current real articles (if any)
-  const existingRealArticles = articlesStore.filter(isRealArticle);
+  if (realArticles.length === 0) {
+    console.warn(`⚠️ All ${articles.length} articles were filtered out as fallback/mock`);
+    return;
+  }
   
-  // Merge with new articles, removing duplicates by URL
-  const allRealArticles = [...existingRealArticles, ...articles];
-  const uniqueArticles = allRealArticles.reduce((acc, article) => {
-    if (!acc.find((a) => a.canonicalUrl === article.canonicalUrl && a.canonicalUrl !== 'https://example.com/article/')) {
+  // Merge with existing articles, removing duplicates by URL
+  const allArticles = [...articlesStore, ...realArticles];
+  const uniqueArticles = allArticles.reduce((acc, article) => {
+    if (!acc.find((a) => a.canonicalUrl === article.canonicalUrl)) {
       acc.push(article);
     }
     return acc;
   }, [] as Article[]);
   
-  // Replace entire store with real articles only
+  // Replace entire store with unique real articles
   articlesStore = uniqueArticles;
   
-  // If we have real articles, log success
-  if (uniqueArticles.length > 0 && uniqueArticles.some(isRealArticle)) {
-    console.log(`✅ Store updated with ${uniqueArticles.length} real news articles`);
-  }
+  console.log(`✅ Store updated: ${uniqueArticles.length} total articles (added ${realArticles.length} new)`);
 }
 
 export const getArticles = publicProcedure
