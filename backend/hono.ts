@@ -21,6 +21,8 @@ import { forceUpdate } from "./jobs/newsUpdater";
 
 const app = new Hono();
 
+console.log("🔧 Creating Hono app instance...");
+
 // Middleware
 app.use("*", logger());
 app.use("*", cors({
@@ -28,6 +30,8 @@ app.use("*", cors({
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
 }));
+
+console.log("🔧 Middleware configured");
 
 // Debug middleware - log ALL incoming requests with full details
 // PLACED FIRST so it catches ALL requests before route matching
@@ -48,7 +52,7 @@ app.use("*", async (c, next) => {
   }
 });
 
-// Health check - test base route
+// Health check - test base route (VERY FIRST ROUTE)
 app.get("/", (c) => {
   console.log("✅ Health check hit at /");
   return c.json({
@@ -57,6 +61,26 @@ app.get("/", (c) => {
     version: "2.0.0",
     timestamp: new Date().toISOString(),
     message: "Server is running",
+    routes: ["/articles", "/api/articles", "/categories", "/api/categories"],
+  });
+});
+
+// CRITICAL TEST: Simple test endpoint to verify server is working
+app.get("/test", (c) => {
+  console.log("✅ TEST endpoint hit at /test");
+  return c.json({
+    success: true,
+    message: "Server is working!",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api/test", (c) => {
+  console.log("✅ TEST endpoint hit at /api/test");
+  return c.json({
+    success: true,
+    message: "API server is working!",
+    timestamp: new Date().toISOString(),
   });
 });
 
