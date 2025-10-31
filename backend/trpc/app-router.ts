@@ -7,6 +7,12 @@ import {
   searchArticles,
   getRelatedArticles,
 } from "./routes/news/articles/route";
+
+// Verify imports are not undefined
+console.log("🔍 Verifying article route exports:");
+console.log("  getArticles:", typeof getArticles, getArticles ? "✅" : "❌");
+console.log("  getArticleById:", typeof getArticleById, getArticleById ? "✅" : "❌");
+console.log("  incrementViewCount:", typeof incrementViewCount, incrementViewCount ? "✅" : "❌");
 import {
   getCategories,
   getCategoryBySlug,
@@ -55,6 +61,12 @@ import {
   deleteUser,
 } from "./routes/admin/users/route";
 import { testNewsFetch } from "./routes/admin/test-news-fetch";
+
+// Verify procedures before creating router
+if (!getArticles) {
+  console.error("❌ CRITICAL: getArticles is undefined!");
+  throw new Error("getArticles procedure is not exported correctly");
+}
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
