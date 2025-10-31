@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Platform,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNews } from "@/providers/NewsProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useAuth } from "@/providers/AuthProvider";
@@ -132,8 +133,8 @@ export default function HomeScreen() {
                 <Globe size={20} color="white" />
               </View>
               <View>
-                <Text style={[styles.brandName, { color: colors.text.primary }]}>AVISO</Text>
-                <Text style={[styles.brandTagline, { color: colors.text.secondary }]}>GLOBAL NEWS NETWORK</Text>
+                <Text style={[styles.brandName, { color: colors.text.primary }]}>AvisoNews</Text>
+                <Text style={[styles.brandTagline, { color: colors.text.secondary }]}>Your Trusted News Source</Text>
               </View>
             </View>
             <View style={styles.headerMeta}>
@@ -171,24 +172,29 @@ export default function HomeScreen() {
 
         {/* Breaking News Ticker */}
         {breakingNews.length > 0 && (
-          <View style={styles.breakingTicker}>
+          <View style={[styles.breakingTicker, { backgroundColor: colors.highlight || colors.status.breaking }]}>
             <View style={styles.breakingLabel}>
-              <Zap size={14} color="white" />
+              <Zap size={14} color="white" fill="white" />
               <Text style={styles.breakingLabelText}>BREAKING</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.breakingContent}>
-                {breakingNews.map((article, index) => (
-                  <TouchableOpacity
-                    key={article.id}
-                    onPress={() => handleArticlePress(article)}
-                  >
-                    <Text style={styles.breakingText}>
-                      {index > 0 && ' • '}{article.title}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.breakingScroll}
+              contentContainerStyle={styles.breakingScrollContent}
+            >
+              {breakingNews.map((article, index) => (
+                <TouchableOpacity
+                  key={article.id}
+                  onPress={() => handleArticlePress(article)}
+                  activeOpacity={0.8}
+                  style={styles.breakingItem}
+                >
+                  <Text style={styles.breakingText}>
+                    {index > 0 && ' • '}{article.title}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
         )}
@@ -224,13 +230,17 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.featuredContainer}
             onPress={() => handleArticlePress(featuredArticle)}
-            activeOpacity={0.95}
+            activeOpacity={0.9}
           >
             <Image
               source={{ uri: featuredArticle.imageUrl }}
               style={styles.featuredImage}
+              resizeMode="cover"
             />
-            <View style={styles.featuredOverlay}>
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+              style={styles.featuredOverlay}
+            >
               <View style={styles.featuredContent}>
                 {featuredArticle.category && (
                   <View style={styles.featuredBadge}>
@@ -243,10 +253,10 @@ export default function HomeScreen() {
                   {featuredArticle.title}
                 </Text>
                 <Text style={styles.featuredSummary} numberOfLines={2}>
-                  {featuredArticle.summary}
+                  {featuredArticle.summary || featuredArticle.excerpt}
                 </Text>
               </View>
-            </View>
+            </LinearGradient>
           </TouchableOpacity>
         )}
 
@@ -420,7 +430,12 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   headerTop: {
     paddingHorizontal: 20,
@@ -441,14 +456,15 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   brandName: {
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 1,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   brandTagline: {
-    fontSize: 9,
-    letterSpacing: 1.5,
+    fontSize: 10,
+    letterSpacing: 0.5,
     marginTop: 2,
+    fontWeight: '500',
   },
   headerMeta: {
     alignItems: 'flex-end',
@@ -464,6 +480,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#FF3B30',
     marginRight: 6,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
   },
   liveText: {
     fontSize: 11,
@@ -477,11 +497,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   breakingTicker: {
-    backgroundColor: '#FF3B30',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  breakingScroll: {
+    flex: 1,
+  },
+  breakingScrollContent: {
+    alignItems: 'center',
+    paddingLeft: 12,
+  },
+  breakingItem: {
+    paddingRight: 8,
   },
   breakingLabel: {
     flexDirection: 'row',
@@ -504,18 +538,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   categoryNav: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   categoryPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginRight: 12,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   categoryPillActive: {
     borderWidth: 0,
@@ -526,9 +565,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   featuredContainer: {
-    height: 400,
+    height: 450,
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 24,
+    marginHorizontal: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   featuredImage: {
     width: '100%',
@@ -539,8 +586,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '60%',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    height: '65%',
     justifyContent: 'flex-end',
   },
   featuredContent: {
@@ -548,11 +594,16 @@ const styles = StyleSheet.create({
   },
   featuredBadge: {
     backgroundColor: '#FF3B30',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     alignSelf: 'flex-start',
     marginBottom: 12,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   featuredBadgeText: {
     color: 'white',
@@ -610,13 +661,13 @@ const styles = StyleSheet.create({
   topStoryCard: {
     width: (width - 50) / 2,
     marginBottom: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
   topStoryImage: {
     width: '100%',
@@ -651,13 +702,13 @@ const styles = StyleSheet.create({
   streamCard: {
     flexDirection: 'row',
     marginBottom: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   streamImage: {
     width: 120,
@@ -679,10 +730,15 @@ const styles = StyleSheet.create({
   },
   breakingBadge: {
     backgroundColor: '#FF3B30',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     marginLeft: 8,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   breakingBadgeText: {
     color: 'white',

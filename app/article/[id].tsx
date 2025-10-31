@@ -14,8 +14,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { ArrowLeft, Share2, Bookmark, ExternalLink, Clock } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { useNews } from "@/providers/NewsProvider";
 import { useAuth } from "@/providers/AuthProvider";
+import { useTheme } from "@/providers/ThemeProvider";
 import TldrBox from "@/components/TldrBox";
 import AttributionBar from "@/components/AttributionBar";
 import RelatedArticles from "@/components/RelatedArticles";
@@ -25,6 +27,7 @@ export default function ArticleScreen() {
   const { id } = useLocalSearchParams();
   const { articles, incrementViewCount } = useNews();
   const { incrementArticlesRead } = useAuth();
+  const { colors, isDark } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   
   const article = articles.find(a => a.id === id);
@@ -78,26 +81,23 @@ export default function ArticleScreen() {
     .slice(0, 3);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-        <LinearGradient
-          colors={["rgba(255,255,255,0.98)", "rgba(255,255,255,0.95)"]}
-          style={styles.headerGradient}
-        >
+        <BlurView intensity={95} tint={isDark ? "dark" : "light"} style={styles.headerBlur}>
           <SafeAreaView edges={["top"]} style={styles.headerContent}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <ArrowLeft size={24} color="#1C1C1E" />
+              <ArrowLeft size={24} color={colors.text.primary} />
             </TouchableOpacity>
             <View style={styles.headerActions}>
               <TouchableOpacity style={styles.headerAction}>
-                <Bookmark size={22} color="#1C1C1E" />
+                <Bookmark size={22} color={colors.text.primary} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.headerAction} onPress={handleShare}>
-                <Share2 size={22} color="#1C1C1E" />
+                <Share2 size={22} color={colors.text.primary} />
               </TouchableOpacity>
             </View>
           </SafeAreaView>
-        </LinearGradient>
+        </BlurView>
       </Animated.View>
 
       <Animated.ScrollView
@@ -117,22 +117,22 @@ export default function ArticleScreen() {
           />
         </Animated.View>
 
-        <View style={styles.content}>
-          <View style={styles.categoryBadge}>
+        <View style={[styles.content, { backgroundColor: colors.background.primary }]}>
+          <View style={[styles.categoryBadge, { backgroundColor: colors.categories[article.category.toLowerCase() as keyof typeof colors.categories] || colors.primary }]}>
             <Text style={styles.categoryText}>{article.category.toUpperCase()}</Text>
           </View>
 
-          <Text style={styles.title}>{article.titleAi || article.title}</Text>
+          <Text style={[styles.title, { color: colors.text.primary }]}>{article.titleAi || article.title}</Text>
 
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
-              <Clock size={14} color="#8E8E93" />
-              <Text style={styles.metaText}>{article.publishedAt}</Text>
+              <Clock size={14} color={colors.text.secondary} />
+              <Text style={[styles.metaText, { color: colors.text.secondary }]}>{article.publishedAt}</Text>
             </View>
-            <Text style={styles.metaDot}>•</Text>
-            <Text style={styles.metaText}>{article.readTime} min read</Text>
-            <Text style={styles.metaDot}>•</Text>
-            <Text style={styles.metaText}>{article.viewCount} views</Text>
+            <Text style={[styles.metaDot, { color: colors.text.tertiary }]}>•</Text>
+            <Text style={[styles.metaText, { color: colors.text.secondary }]}>{article.readTime || 5} min read</Text>
+            <Text style={[styles.metaDot, { color: colors.text.tertiary }]}>•</Text>
+            <Text style={[styles.metaText, { color: colors.text.secondary }]}>{article.viewCount} views</Text>
           </View>
 
           {article.tldr && <TldrBox tldr={article.tldr} />}
@@ -142,20 +142,20 @@ export default function ArticleScreen() {
 
 
 
-          <Text style={styles.excerpt}>{article.excerpt}</Text>
+          <Text style={[styles.excerpt, { color: colors.text.secondary }]}>{article.excerpt}</Text>
 
           <View style={styles.articleContent}>
-            <Text style={styles.paragraph}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
+            <Text style={[styles.paragraph, { color: colors.text.primary }]}>
+              {article.excerpt} Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
               incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
               exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
             </Text>
-            <Text style={styles.paragraph}>
+            <Text style={[styles.paragraph, { color: colors.text.primary }]}>
               Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
               fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in 
               culpa qui officia deserunt mollit anim id est laborum.
             </Text>
-            <Text style={styles.paragraph}>
+            <Text style={[styles.paragraph, { color: colors.text.primary }]}>
               Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque 
               laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi 
               architecto beatae vitae dicta sunt explicabo.
@@ -184,23 +184,25 @@ export default function ArticleScreen() {
       </Animated.ScrollView>
 
       <SafeAreaView edges={["top"]} style={styles.floatingHeader}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.floatingBackButton}>
-          <View style={styles.floatingButtonBg}>
-            <ArrowLeft size={22} color="#1C1C1E" />
+        <BlurView intensity={95} tint={isDark ? "dark" : "light"} style={styles.floatingHeaderBlur}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.floatingBackButton}>
+            <View style={[styles.floatingButtonBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)' }]}>
+              <ArrowLeft size={22} color={colors.text.primary} />
+            </View>
+          </TouchableOpacity>
+          <View style={styles.floatingActions}>
+            <TouchableOpacity style={styles.floatingAction}>
+              <View style={[styles.floatingButtonBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)' }]}>
+                <Bookmark size={20} color={colors.text.primary} />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.floatingAction} onPress={handleShare}>
+              <View style={[styles.floatingButtonBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)' }]}>
+                <Share2 size={20} color={colors.text.primary} />
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-        <View style={styles.floatingActions}>
-          <TouchableOpacity style={styles.floatingAction}>
-            <View style={styles.floatingButtonBg}>
-              <Bookmark size={20} color="#1C1C1E" />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.floatingAction} onPress={handleShare}>
-            <View style={styles.floatingButtonBg}>
-              <Share2 size={20} color="#1C1C1E" />
-            </View>
-          </TouchableOpacity>
-        </View>
+        </BlurView>
       </SafeAreaView>
     </View>
   );
@@ -209,7 +211,6 @@ export default function ArticleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   header: {
     position: "absolute",
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
   },
-  headerGradient: {
+  headerBlur: {
     paddingBottom: 10,
   },
   headerContent: {
@@ -243,11 +244,14 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    zIndex: 50,
+  },
+  floatingHeaderBlur: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 10,
-    zIndex: 50,
+    paddingBottom: 10,
   },
   floatingBackButton: {
     padding: 4,
@@ -260,14 +264,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   floatingButtonBg: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 20,
-    padding: 10,
+    borderRadius: 22,
+    padding: 11,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   scrollView: {
     flex: 1,
@@ -289,32 +292,35 @@ const styles = StyleSheet.create({
     height: 100,
   },
   content: {
-    padding: 20,
+    padding: 24,
     marginTop: -40,
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
   categoryBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#FF6B6B",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   categoryText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "800",
-    color: "#1C1C1E",
-    lineHeight: 34,
-    marginBottom: 12,
+    lineHeight: 40,
+    marginBottom: 16,
+    letterSpacing: -0.5,
   },
   metaRow: {
     flexDirection: "row",
@@ -327,29 +333,30 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
-    color: "#8E8E93",
-    marginLeft: 4,
+    marginLeft: 6,
+    fontWeight: "500",
   },
   metaDot: {
     fontSize: 13,
-    color: "#C7C7CC",
-    marginHorizontal: 8,
+    marginHorizontal: 10,
+    fontWeight: "300",
   },
   excerpt: {
-    fontSize: 18,
-    lineHeight: 26,
-    color: "#3C3C43",
+    fontSize: 19,
+    lineHeight: 28,
     fontWeight: "500",
-    marginBottom: 24,
+    marginBottom: 28,
+    letterSpacing: -0.2,
   },
   articleContent: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   paragraph: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#1C1C1E",
-    marginBottom: 16,
+    fontSize: 17,
+    lineHeight: 28,
+    marginBottom: 20,
+    letterSpacing: -0.1,
+    fontWeight: "400",
   },
   tagsContainer: {
     flexDirection: "row",

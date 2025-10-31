@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Home, Search, Layers, Settings, Headphones, Trophy, Star } from "lucide-react-native";
+import { Platform } from "react-native";
 import React from "react";
 
 import { useTheme } from "@/providers/ThemeProvider";
@@ -18,19 +19,26 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.text.secondary,
         tabBarStyle: {
           backgroundColor: colors.background.card,
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0.1,
-          shadowRadius: 10,
+          borderTopWidth: 1,
+          borderTopColor: colors.border.primary,
+          elevation: 8,
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
+          shadowOffset: { width: 0, height: -4 },
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 8,
           // Hide tab bar for unauthenticated users
           display: isAuthenticated ? 'flex' : 'none',
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",
-          marginTop: -2,
+          marginTop: -4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
         headerShown: false,
       }}
