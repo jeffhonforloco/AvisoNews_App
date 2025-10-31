@@ -1,8 +1,7 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import { trpc } from "@/lib/trpc";
 import { Article, Category } from "@/types/news";
-import { mockArticles } from "@/mocks/articles";
 import { sortArticlesByNewest } from "@/utils/timeUtils";
 import { REFRESH_INTERVALS, CACHE_STALE_TIME, ARTICLE_LIMITS } from "@/config/newsConfig";
 
@@ -17,24 +16,37 @@ interface NewsContextType {
 }
 
 export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => {
-  // Fetch articles from API with shorter stale time for real-time updates
+  // Fetch articles from API - FORCE fresh data on every mount
   const articlesQuery = trpc.news.articles.list.useQuery(
     { limit: ARTICLE_LIMITS.DEFAULT },
     {
-      staleTime: CACHE_STALE_TIME.ARTICLES,
-      gcTime: 1000 * 60 * 30, // 30 minutes
-      retry: 2,
-      retryDelay: 1000,
+      staleTime: 0, // Always consider stale - force fresh fetch
+      gcTime: 0, // Don't cache - always get fresh data
+      retry: 3, // Retry more times
+      retryDelay: 2000, // Wait 2 seconds between retries
+      refetchOnMount: true, // Always refetch on mount
+      refetchOnWindowFocus: true, // Refetch when window gains focus
       refetchInterval: REFRESH_INTERVALS.ARTICLES, // Auto-refresh every 2 minutes
       refetchIntervalInBackground: false, // Only refresh when app is active
     }
   );
+  
+  // Force a fresh fetch when provider mounts
+  useEffect(() => {
+    console.log("📰 NewsProvider mounted - forcing fresh data fetch...");
+    // Small delay to ensure backend is ready
+    const timer = setTimeout(() => {
+      articlesQuery.refetch();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []); // Only on mount
 
   // Fetch categories from API
   const categoriesQuery = trpc.news.categories.list.useQuery(undefined, {
-    staleTime: CACHE_STALE_TIME.CATEGORIES,
+    staleTime: 0, // Always fresh
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
     retry: 2,
+    refetchOnMount: true,
   });
 
   // Mutation for incrementing view count
@@ -52,15 +64,24 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
     [incrementViewMutation]
   );
 
-  // Use real articles from API
-  // Always have fallback to ensure we never show empty
+  // Use real articles from API - NO MOCK FALLBACK
+  // Backend now always has real data (either from RSS or fallback articles)
   const rawArticles = articlesQuery.data?.articles || [];
   
-  // If we have articles, use them. Otherwise use mock as fallback
-  // This ensures the app never shows "Unable to load news"
-  const articles = rawArticles.length > 0 
-    ? sortArticlesByNewest(rawArticles)
-    : sortArticlesByNewest(mockArticles);
+  // Always use API data - backend handles fallbacks
+  const articles = sortArticlesByNewest(rawArticles);
+  
+  // Log for debugging
+  useEffect(() => {
+    if (rawArticles.length > 0) {
+      const isRealArticle = (a: Article) => {
+        const id = a.id.toLowerCase();
+        return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-');
+      };
+      const realCount = rawArticles.filter(isRealArticle).length;
+      console.log(`📰 Frontend received ${rawArticles.length} articles (${realCount} real)`);
+    }
+  }, [rawArticles.length]);
   
   const categories = categoriesQuery.data || [];
   const lastUpdated = articlesQuery.dataUpdatedAt 
@@ -74,15 +95,18 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
                           !articlesQuery.isLoading &&
                           !articlesQuery.isFetching;
 
+  const refetch = useCallback(() => {
+    console.log("🔄 Manual refresh triggered");
+    articlesQuery.refetch();
+    categoriesQuery.refetch();
+  }, [articlesQuery, categoriesQuery]);
+
   return {
     articles,
     categories,
     isLoading: articlesQuery.isLoading || categoriesQuery.isLoading,
     error: shouldShowError ? articlesQuery.error : null,
-    refetch: () => {
-      articlesQuery.refetch();
-      categoriesQuery.refetch();
-    },
+    refetch,
     incrementViewCount,
     lastUpdated,
   };

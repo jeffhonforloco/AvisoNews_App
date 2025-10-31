@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -45,6 +45,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  
+  // Force refresh when screen mounts/focuses
+  useEffect(() => {
+    console.log("🏠 HomeScreen mounted - refreshing news...");
+    refetch();
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
