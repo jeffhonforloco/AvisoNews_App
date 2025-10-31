@@ -15,20 +15,19 @@ const app = new Hono();
 app.use("*", cors());
 
 // Mount tRPC router at /trpc
-// The endpoint should match what the frontend calls
-app.all("/trpc/*", async (c) => {
-  console.log("📡 tRPC request received:", c.req.path);
-  return trpcServer({
+app.use(
+  "/trpc/*",
+  trpcServer({
     router: appRouter,
     createContext: async (opts) => {
-      console.log("📡 Creating context for:", opts.req.url);
+      console.log("📡 tRPC request:", opts.req.url);
       return await createContext(opts);
     },
-    onError: ({ error, path }) => {
-      console.error(`❌ tRPC Error on path ${path}:`, error);
+    onError: ({ error, path, type }) => {
+      console.error(`❌ tRPC Error on ${path} (${type}):`, error.message);
     },
-  })(c);
-});
+  })
+);
 
 // Simple health check endpoint
 app.get("/", (c) => {
