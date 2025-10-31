@@ -64,24 +64,37 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
     [incrementViewMutation]
   );
 
-  // Use real articles from API - NO MOCK FALLBACK
-  // Backend now always has real data (either from RSS or fallback articles)
+  // Use ONLY real articles from API - NO MOCK, NO FALLBACK
+  // Backend must provide real data from RSS feeds
   const rawArticles = articlesQuery.data?.articles || [];
   
-  // Always use API data - backend handles fallbacks
-  const articles = sortArticlesByNewest(rawArticles);
+  // Filter out any mock/fallback articles that might slip through
+  const realArticles = rawArticles.filter((article: Article) => {
+    const id = article.id.toLowerCase();
+    // Exclude numeric IDs (old mock articles) and fallback articles
+    const isNotMock = !/^[0-9]+$/.test(id);
+    const isNotFallback = !id.startsWith('fallback-');
+    const hasRealUrl = article.canonicalUrl && 
+                       !article.canonicalUrl.includes('example.com') &&
+                       !article.canonicalUrl.includes('techcrunch.com/openai-gpt5'); // Old mock URL
+    
+    return isNotMock && isNotFallback && hasRealUrl;
+  });
+  
+  // Always use filtered real articles only
+  const articles = sortArticlesByNewest(realArticles);
   
   // Log for debugging
   useEffect(() => {
     if (rawArticles.length > 0) {
-      const isRealArticle = (a: Article) => {
-        const id = a.id.toLowerCase();
-        return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-');
-      };
-      const realCount = rawArticles.filter(isRealArticle).length;
-      console.log(`📰 Frontend received ${rawArticles.length} articles (${realCount} real)`);
+      console.log(`📰 Frontend received ${rawArticles.length} total articles, ${realArticles.length} are REAL`);
+      if (realArticles.length === 0 && rawArticles.length > 0) {
+        console.warn("⚠️ WARNING: All articles were filtered out as mock/fallback. Check backend initialization.");
+      }
+    } else if (articlesQuery.isSuccess && rawArticles.length === 0) {
+      console.warn("⚠️ API returned empty array. Backend may still be initializing.");
     }
-  }, [rawArticles.length]);
+  }, [rawArticles.length, realArticles.length]);
   
   const categories = categoriesQuery.data || [];
   const lastUpdated = articlesQuery.dataUpdatedAt 
@@ -89,9 +102,9 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
     : null;
 
   // Only show error if we have an actual error AND no data AND not loading
-  // If we're loading or have mock data, don't show error
+  // Show error if API failed AND we have no articles (real or otherwise)
   const shouldShowError = articlesQuery.error && 
-                          rawArticles.length === 0 && 
+                          articles.length === 0 && 
                           !articlesQuery.isLoading &&
                           !articlesQuery.isFetching;
 

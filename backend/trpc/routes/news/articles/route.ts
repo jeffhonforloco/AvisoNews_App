@@ -1,12 +1,11 @@
 import { z } from "zod";
 import { publicProcedure } from "@/backend/trpc/create-context";
-import { mockArticles } from "@/mocks/articles";
 import { Article } from "@/types/news";
 import { initializeNewsStore } from "@/backend/services/newsInitializer";
 
 // In-memory store (in production, this would be a database)
-// Start with mock data so app always has content immediately
-let articlesStore: Article[] = [...mockArticles];
+// Start EMPTY - only real news from RSS feeds
+let articlesStore: Article[] = [];
 let initializationPromise: Promise<void> | null = null;
 let initializationStarted = false;
 
@@ -50,10 +49,21 @@ async function ensureInitialized(): Promise<void> {
           }).length;
           console.log(`✅ Real news loaded: ${realCount} real articles out of ${storeAfterInit.length} total`);
         } else {
-          console.warn(`⚠️ No real articles found. Store has ${storeAfterInit.length} articles (likely all mock/fallback)`);
-          // Don't replace with mock - let's try one more time with a simple fetch
+          console.warn(`⚠️ No real articles found. Store has ${storeAfterInit.length} articles (likely all fallback)`);
+          // Try one more time with emergency fetch
           console.log("🔄 Attempting emergency fetch...");
           await emergencyFetch();
+          
+          // Check again after emergency fetch
+          const finalCheck = getArticlesStore();
+          const stillNoReal = !finalCheck.some(a => {
+            const id = a.id.toLowerCase();
+            return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-') && a.canonicalUrl !== 'https://example.com/article/';
+          });
+          
+          if (stillNoReal && finalCheck.length === 0) {
+            console.error("❌ CRITICAL: No articles could be fetched. Store is empty. Check RSS feeds and network.");
+          }
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -141,8 +151,19 @@ export const getArticles = publicProcedure
       .optional()
   )
   .query(async ({ input }) => {
-    // Ensure news is initialized before querying
+    // CRITICAL: Ensure news is initialized and loaded BEFORE returning
     await ensureInitialized();
+    
+    // Wait a bit more if store is still empty (initialization might be in progress)
+    if (articlesStore.length === 0) {
+      console.log("⏳ Store is empty, waiting for initialization to complete...");
+      let retries = 0;
+      while (articlesStore.length === 0 && retries < 10) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        retries++;
+      }
+    }
+    
     let filtered = [...articlesStore];
 
     // Filter by category

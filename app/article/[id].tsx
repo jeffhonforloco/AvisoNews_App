@@ -27,18 +27,20 @@ import EnhancedAggregator from "@/components/EnhancedAggregator";
 
 export default function ArticleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { articles, incrementViewCount } = useNews();
+  const { incrementViewCount } = useNews(); // Removed articles - only use API
   const { incrementArticlesRead } = useAuth();
   const { colors, isDark } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
   
-  // Fetch article from API if not in local list
+  // Fetch article from API - NO LOCAL FALLBACK
   const articleQuery = trpc.news.articles.byId.useQuery(
     { id: id || "" },
     {
       enabled: !!id,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
+      staleTime: 0, // Always fresh
+      gcTime: 0, // No cache
+      retry: 2,
+      refetchOnMount: true,
     }
   );
 
@@ -47,12 +49,14 @@ export default function ArticleScreen() {
     { articleId: id || "", limit: 3 },
     {
       enabled: !!id,
-      staleTime: 1000 * 60 * 5,
+      staleTime: 0,
+      gcTime: 0,
+      refetchOnMount: true,
     }
   );
   
-  // Use article from API query if available, otherwise fall back to local list
-  const article = articleQuery.data || articles.find(a => a.id === id);
+  // Use ONLY API data - no local fallback
+  const article = articleQuery.data;
   const relatedArticles = relatedArticlesQuery.data?.articles || [];
 
   useEffect(() => {

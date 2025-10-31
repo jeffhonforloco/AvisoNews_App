@@ -20,8 +20,11 @@ import AuthPromptModal from "@/components/AuthPromptModal";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
+      staleTime: 0, // Always fresh - no caching
+      gcTime: 0, // Don't cache - always get fresh data
+      refetchOnMount: true, // Always refetch on mount
+      refetchOnWindowFocus: true, // Refetch when window gains focus
+      retry: 2, // Retry failed requests
     },
   },
 });

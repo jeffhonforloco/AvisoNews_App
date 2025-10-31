@@ -85,18 +85,12 @@ export async function initializeNewsStore(): Promise<void> {
       return acc;
     }, [] as typeof allArticles);
 
-    // Replace mock articles with real news
+    // Add real news articles to store
     if (uniqueArticles.length > 0) {
-      // Clear store and add real articles
-      const { addArticlesToStore, getArticlesStore } = await import("@/backend/trpc/routes/news/articles/route");
-      
-      // Clear existing store first
-      const store = await import("@/backend/trpc/routes/news/articles/route");
-      // Replace with real articles
       addArticlesToStore(uniqueArticles);
-      
+      const store = await import("@/backend/trpc/routes/news/articles/route");
       const finalCount = store.getArticlesStore().length;
-      console.log(`✅ Successfully replaced store with ${finalCount} real news articles`);
+      console.log(`✅ Successfully loaded ${finalCount} real news articles from RSS feeds`);
     } else {
       console.warn("⚠️ No articles fetched from RSS feeds. Will try alternative sources...");
       // Try a simpler direct fetch without proxy

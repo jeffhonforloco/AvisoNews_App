@@ -47,6 +47,24 @@ export const trpcClient = trpc.createClient({
       async headers() {
         return await getAuthHeaders();
       },
+      fetch: async (url, options) => {
+        // Add timeout and better error handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (error) {
+          clearTimeout(timeoutId);
+          console.error("❌ tRPC fetch error:", error);
+          throw error;
+        }
+      },
     }),
   ],
 });
