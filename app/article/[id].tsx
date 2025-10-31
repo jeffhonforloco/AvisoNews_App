@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -16,10 +16,11 @@ import { useLocalSearchParams, router } from "expo-router";
 import { ArrowLeft, Share2, Bookmark, ExternalLink, Clock } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
-import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
 import { useNews } from "@/providers/NewsProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
+import { Article } from "@/types/news";
 import TldrBox from "@/components/TldrBox";
 import AttributionBar from "@/components/AttributionBar";
 import RelatedArticles from "@/components/RelatedArticles";
@@ -27,45 +28,48 @@ import EnhancedAggregator from "@/components/EnhancedAggregator";
 
 export default function ArticleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { incrementViewCount } = useNews(); // Removed articles - only use API
+  const { incrementViewCount } = useNews();
   const { incrementArticlesRead } = useAuth();
   const { colors, isDark } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [article, setArticle] = useState<Article | null>(null);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   
-  // Fetch article from API - NO LOCAL FALLBACK
-  const articleQuery = trpc.news.articles.byId.useQuery(
-    { id: id || "" },
-    {
-      enabled: !!id,
-      staleTime: 0, // Always fresh
-      gcTime: 0, // No cache
-      retry: 2,
-      refetchOnMount: true,
-    }
-  );
+  // Fetch article from API
+  useEffect(() => {
+    if (!id) return;
 
-  // Get related articles from API
-  const relatedArticlesQuery = trpc.news.articles.related.useQuery(
-    { articleId: id || "", limit: 3 },
-    {
-      enabled: !!id,
-      staleTime: 0,
-      gcTime: 0,
-      refetchOnMount: true,
-    }
-  );
-  
-  // Use ONLY API data - no local fallback
-  const article = articleQuery.data;
-  const relatedArticles = relatedArticlesQuery.data?.articles || [];
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const [fetchedArticle, fetchedRelated] = await Promise.all([
+          api.getArticleById(id),
+          api.getRelatedArticles(id, 3),
+        ]);
+        
+        setArticle(fetchedArticle);
+        setRelatedArticles(fetchedRelated);
+      } catch (err) {
+        console.error("Error fetching article:", err);
+        setError(err instanceof Error ? err : new Error("Failed to fetch article"));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
 
   useEffect(() => {
     if (article) {
       incrementViewCount(article.id);
-      // Track article read for auth prompt
       incrementArticlesRead();
     }
-  }, [article?.id]);
+  }, [article?.id, incrementViewCount, incrementArticlesRead]);
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 200],
@@ -79,7 +83,7 @@ export default function ArticleScreen() {
     extrapolate: "clamp",
   });
 
-  if (articleQuery.isLoading) {
+  if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={styles.loadingContainer}>
@@ -92,7 +96,7 @@ export default function ArticleScreen() {
     );
   }
 
-  if (!article) {
+  if (error || !article) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
         <View style={styles.errorContainer}>

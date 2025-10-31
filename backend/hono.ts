@@ -1,55 +1,165 @@
+// Industry-Standard REST API Server
+// Built with Hono for cross-platform compatibility
+
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter } from "./trpc/app-router";
-import { createContext } from "./trpc/create-context";
+import { logger } from "hono/logger";
+import {
+  getArticles,
+  getArticleById,
+  searchArticles,
+  getRelatedArticles,
+  incrementViewCount,
+  getCategories,
+  getCategoryBySlug,
+  getSources,
+  getStoreStats,
+  addArticles,
+} from "./store/newsStore";
+import { aggregateNews } from "./services/newsAggregator";
+import { forceUpdate } from "./jobs/newsUpdater";
 
-// Create Hono app
 const app = new Hono();
 
-// Enable CORS
-app.use("*", cors());
-
-// Mount tRPC using fetch adapter directly - FRESH START
-// This bypasses @hono/trpc-server and uses the standard tRPC fetch adapter
-app.all("/trpc", async (c) => {
-  return handleTRPC(c);
-});
-
-app.all("/trpc/*", async (c) => {
-  return handleTRPC(c);
-});
-
-async function handleTRPC(c: any) {
-  console.log("📡 tRPC request:", c.req.method, c.req.url);
-  
-  try {
-    const response = await fetchRequestHandler({
-      endpoint: "/api/trpc",
-      router: appRouter,
-      req: c.req.raw,
-      createContext: async (opts) => {
-        console.log("📡 Creating context for:", opts.req.url);
-        return await createContext(opts);
-      },
-      onError: ({ error, path, type }) => {
-        console.error(`❌ tRPC Error [${type}] on ${path}:`, error.message);
-        if (error.code === 'NOT_FOUND') {
-          console.error("Available routes:", Object.keys(appRouter._def?.record || {}));
-        }
-      },
-    });
-
-    return response;
-  } catch (error) {
-    console.error("❌ Error in tRPC handler:", error);
-    return c.json({ error: "Internal server error" }, 500);
-  }
-}
+// Middleware
+app.use("*", logger());
+app.use("*", cors({
+  origin: "*",
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+}));
 
 // Health check
 app.get("/", (c) => {
-  return c.json({ status: "ok", message: "API is running", router: "configured" });
+  return c.json({
+    status: "ok",
+    service: "AvisoNews API",
+    version: "2.0.0",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// API Routes
+
+// Articles
+app.get("/api/articles", (c) => {
+  const category = c.req.query("category");
+  const limit = parseInt(c.req.query("limit") || "20");
+  const offset = parseInt(c.req.query("offset") || "0");
+  const featured = c.req.query("featured") === "true";
+  const breaking = c.req.query("breaking") === "true";
+
+  const articles = getArticles({
+    category,
+    limit,
+    offset,
+    featured,
+    breaking,
+  });
+
+  return c.json({
+    success: true,
+    data: articles,
+    count: articles.length,
+  });
+});
+
+app.get("/api/articles/:id", (c) => {
+  const id = c.req.param("id");
+  const article = getArticleById(id);
+
+  if (!article) {
+    return c.json({ success: false, error: "Article not found" }, 404);
+  }
+
+  return c.json({ success: true, data: article });
+});
+
+app.post("/api/articles/:id/view", async (c) => {
+  const id = c.req.param("id");
+  incrementViewCount(id);
+  return c.json({ success: true });
+});
+
+app.get("/api/articles/search", (c) => {
+  const query = c.req.query("q");
+  const limit = parseInt(c.req.query("limit") || "20");
+
+  if (!query || query.length < 1) {
+    return c.json({ success: false, error: "Query parameter 'q' is required" }, 400);
+  }
+
+  const results = searchArticles(query, limit);
+  return c.json({ success: true, data: results, count: results.length });
+});
+
+app.get("/api/articles/:id/related", (c) => {
+  const id = c.req.param("id");
+  const limit = parseInt(c.req.query("limit") || "3");
+  const related = getRelatedArticles(id, limit);
+  return c.json({ success: true, data: related });
+});
+
+// Categories
+app.get("/api/categories", (c) => {
+  const categories = getCategories();
+  return c.json({ success: true, data: categories });
+});
+
+app.get("/api/categories/:slug", (c) => {
+  const slug = c.req.param("slug");
+  const category = getCategoryBySlug(slug);
+
+  if (!category) {
+    return c.json({ success: false, error: "Category not found" }, 404);
+  }
+
+  return c.json({ success: true, data: category });
+});
+
+// Sources
+app.get("/api/sources", (c) => {
+  const sources = getSources();
+  return c.json({ success: true, data: sources });
+});
+
+// Admin/Management
+app.post("/api/admin/update", async (c) => {
+  try {
+    const result = await forceUpdate();
+    return c.json({
+      success: result.success,
+      message: result.success
+        ? `Updated ${result.count} articles`
+        : "Update failed",
+      count: result.count,
+    });
+  } catch (error) {
+    return c.json(
+      { success: false, error: (error as Error).message },
+      500
+    );
+  }
+});
+
+app.get("/api/stats", (c) => {
+  const stats = getStoreStats();
+  return c.json({ success: true, data: stats });
+});
+
+// 404 handler
+app.notFound((c) => {
+  return c.json({ success: false, error: "Endpoint not found" }, 404);
+});
+
+// Error handler
+app.onError((err, c) => {
+  console.error("API Error:", err);
+  return c.json(
+    { success: false, error: err.message || "Internal server error" },
+    500
+  );
 });
 
 export default app;
+

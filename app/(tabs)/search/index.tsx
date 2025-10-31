@@ -13,12 +13,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, X, TrendingUp, Clock } from "lucide-react-native";
 import { useDebounce } from "@/hooks/useDebounce";
-import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
+import { Article } from "@/types/news";
 import { useTheme } from "@/providers/ThemeProvider";
 import ArticleCard from "@/components/ArticleCard";
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Article[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState([
     "AI Technology",
     "Stock Market",
@@ -28,17 +31,23 @@ export default function SearchScreen() {
   const { colors } = useTheme();
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Use API search when query is provided
-  const searchQueryResult = trpc.news.articles.search.useQuery(
-    { query: debouncedSearchQuery, limit: 50 },
-    {
-      enabled: debouncedSearchQuery.length > 0,
-      staleTime: 1000 * 60 * 2, // 2 minutes
-      retry: 1,
+  // Search when query changes
+  useEffect(() => {
+    if (debouncedSearchQuery.length > 0) {
+      setIsSearching(true);
+      api.searchArticles(debouncedSearchQuery, 50)
+        .then((results) => {
+          setSearchResults(results);
+          setIsSearching(false);
+        })
+        .catch((err) => {
+          console.error("Search error:", err);
+          setIsSearching(false);
+        });
+    } else {
+      setSearchResults([]);
     }
-  );
-
-  const searchResults = searchQueryResult.data?.articles || [];
+  }, [debouncedSearchQuery]);
 
   const trendingTopics = [
     "Artificial Intelligence",

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,7 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { ArrowLeft, ExternalLink, AlertCircle, Globe, Shield, TrendingUp } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { trpc } from "@/lib/trpc";
+import { api } from "@/lib/api";
+import { Article } from "@/types/news";
 import { useTheme } from "@/providers/ThemeProvider";
 
 interface SourceArticle {
@@ -40,32 +41,37 @@ export default function SourceScreen() {
   const { sourceId } = useLocalSearchParams<{ sourceId: string }>();
   const { colors, isDark } = useTheme();
   
-  // Fetch source from API
-  const sourceQuery = trpc.news.sources.byId.useQuery(
-    { id: sourceId || "" },
-    {
-      enabled: !!sourceId,
-      staleTime: 1000 * 60 * 10, // 10 minutes
-      retry: 1,
-    }
-  );
+  const [source, setSource] = useState<any>(null);
+  const [sourceArticles, setSourceArticles] = useState<Article[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  // Fetch articles from this source
-  const articlesQuery = trpc.news.articles.list.useQuery(
-    { limit: 50 },
-    {
-      staleTime: 1000 * 60 * 5,
-    }
-  );
+  // Fetch source and articles
+  useEffect(() => {
+    if (!sourceId) return;
 
-  const source = sourceQuery.data;
-  const isLoading = sourceQuery.isLoading || articlesQuery.isLoading;
-  const error = sourceQuery.error;
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [sources, articles] = await Promise.all([
+          api.getSources(),
+          api.getArticles({ limit: 50 }),
+        ]);
+        
+        const foundSource = sources.find((s) => s.id === sourceId);
+        const filteredArticles = articles.filter((a) => a.sourceId === sourceId);
+        
+        setSource(foundSource);
+        setSourceArticles(filteredArticles);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Failed to fetch source"));
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Filter articles by source
-  const sourceArticles = articlesQuery.data?.articles.filter(
-    (article) => article.sourceId === sourceId
-  ) || [];
+    fetchData();
+  }, [sourceId]);
 
   // Transform to SourceArticle format
   const transformedArticles: SourceArticle[] = sourceArticles.map((article) => ({
