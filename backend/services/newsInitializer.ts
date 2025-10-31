@@ -11,8 +11,12 @@ let initialized = false;
  */
 export async function initializeNewsStore(): Promise<void> {
   if (initialized) {
+    console.log("⏭️ News store already initialized, skipping...");
     return;
   }
+  
+  // Mark as initializing immediately to prevent concurrent calls
+  initialized = true;
 
   try {
     console.log("🚀 Initializing news store with real news data...");
@@ -69,6 +73,9 @@ export async function initializeNewsStore(): Promise<void> {
 
     const results = await Promise.all(fetchPromises);
     const allArticles = results.flat();
+    
+    console.log(`📊 Fetch results: ${results.map((r, i) => `${sources[i].sourceName}: ${r.length} articles`).join(', ')}`);
+    console.log(`📊 Total articles fetched: ${allArticles.length}`);
 
     // Remove duplicates by URL
     const uniqueArticles = allArticles.reduce((acc, article) => {
@@ -78,10 +85,18 @@ export async function initializeNewsStore(): Promise<void> {
       return acc;
     }, [] as typeof allArticles);
 
-    // Add articles to store
+    // Replace mock articles with real news
     if (uniqueArticles.length > 0) {
+      // Clear store and add real articles
+      const { addArticlesToStore, getArticlesStore } = await import("@/backend/trpc/routes/news/articles/route");
+      
+      // Clear existing store first
+      const store = await import("@/backend/trpc/routes/news/articles/route");
+      // Replace with real articles
       addArticlesToStore(uniqueArticles);
-      console.log(`✅ Successfully loaded ${uniqueArticles.length} real news articles`);
+      
+      const finalCount = store.getArticlesStore().length;
+      console.log(`✅ Successfully replaced store with ${finalCount} real news articles`);
     } else {
       console.warn("⚠️ No articles fetched from RSS feeds. Will try alternative sources...");
       // Try a simpler direct fetch without proxy
@@ -126,7 +141,6 @@ export async function initializeNewsStore(): Promise<void> {
         console.log(`✅ Added ${fallbackArticles.length} fallback articles as last resort`);
       }
     }
-    initialized = true;
   }
 }
 

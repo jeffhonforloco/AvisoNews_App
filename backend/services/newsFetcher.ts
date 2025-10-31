@@ -170,6 +170,16 @@ export async function fetchFromRSS(config: NewsFetcherConfig): Promise<Article[]
 
     // Simple RSS parser (for production, use a proper XML parser like rss-parser)
     const items = parseRSSFeed(xmlText);
+    
+    if (items.length === 0) {
+      console.warn(`⚠️ RSS parser returned 0 items for ${config.sourceName}. XML length: ${xmlText.length}`);
+      // Log a sample of the XML to debug
+      if (xmlText.length > 0) {
+        console.log(`XML sample (first 500 chars): ${xmlText.substring(0, 500)}`);
+      }
+    } else {
+      console.log(`✅ Parsed ${items.length} items from ${config.sourceName} RSS feed`);
+    }
 
     return items
       .filter((item) => {

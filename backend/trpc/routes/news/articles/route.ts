@@ -28,19 +28,23 @@ async function ensureInitialized(): Promise<void> {
     initializationPromise = (async () => {
       try {
         await initializeNewsStore();
-        // After initialization, replace mock data with real data
+        // After initialization, check if we got real articles
         const storeAfterInit = getArticlesStore();
-        if (storeAfterInit.length > 0 && storeAfterInit.some(a => !a.id.startsWith('fallback-'))) {
-          // We have real articles, keep them
+        const hasRealArticles = storeAfterInit.some(a => {
+          const id = a.id.toLowerCase();
+          return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-') && a.canonicalUrl !== 'https://example.com/article/';
+        });
+        
+        if (hasRealArticles) {
           console.log(`✅ Real news loaded: ${storeAfterInit.length} articles`);
         } else if (storeAfterInit.length === 0) {
-          // Still empty, use mock data
+          // Still empty after trying, use mock data as last resort
           articlesStore = [...mockArticles];
-          console.log("⚠️ Using mock articles as fallback");
+          console.log("⚠️ Using mock articles as last resort fallback");
         }
       } catch (error) {
         console.error("Initialization error:", error);
-        // Keep mock data on error
+        // Keep what we have (either real or mock)
       }
     })();
     
@@ -55,7 +59,33 @@ export function getArticlesStore(): Article[] {
 }
 
 export function addArticlesToStore(articles: Article[]): void {
-  articlesStore.push(...articles);
+  // Filter out mock articles (they have simple numeric IDs like "1", "2")
+  // and fallback articles (they have IDs starting with "fallback-")
+  const isRealArticle = (article: Article) => {
+    const id = article.id.toLowerCase();
+    // Mock articles have simple numeric IDs, real articles have complex IDs with timestamps
+    return !/^[0-9]+$/.test(id) && !id.startsWith('fallback-');
+  };
+  
+  // Get current real articles (if any)
+  const existingRealArticles = articlesStore.filter(isRealArticle);
+  
+  // Merge with new articles, removing duplicates by URL
+  const allRealArticles = [...existingRealArticles, ...articles];
+  const uniqueArticles = allRealArticles.reduce((acc, article) => {
+    if (!acc.find((a) => a.canonicalUrl === article.canonicalUrl && a.canonicalUrl !== 'https://example.com/article/')) {
+      acc.push(article);
+    }
+    return acc;
+  }, [] as Article[]);
+  
+  // Replace entire store with real articles only
+  articlesStore = uniqueArticles;
+  
+  // If we have real articles, log success
+  if (uniqueArticles.length > 0 && uniqueArticles.some(isRealArticle)) {
+    console.log(`✅ Store updated with ${uniqueArticles.length} real news articles`);
+  }
 }
 
 export const getArticles = publicProcedure
