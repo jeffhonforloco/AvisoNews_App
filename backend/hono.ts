@@ -84,43 +84,57 @@ const app = new Hono();
 app.use("*", cors());
 
 // Mount tRPC router using @hono/trpc-server
-// CRITICAL: The endpoint must match exactly what the client calls
-// Client calls: /api/trpc/news.articles.list
-// Since Rork mounts server at /api, we handle /trpc/*
+// NOTE: @hono/trpc-server doesn't use 'endpoint' parameter - it handles routing automatically
+// The path matching in Hono is what matters: /trpc/* catches all tRPC requests
 const trpcMiddleware = trpcServer({
   router: appRouter,
-  endpoint: "/trpc", // Explicit endpoint path
   createContext: async (opts) => {
-    const url = new URL(opts.req.url);
-    console.log("📡 tRPC request:", opts.req.method, url.pathname, url.search);
-    return await createContext(opts);
+    try {
+      const url = new URL(opts.req.url);
+      console.log("📡 tRPC request:", opts.req.method, url.pathname);
+      
+      // Log the actual path being requested
+      const pathname = url.pathname;
+      const procedurePath = pathname.replace('/api/trpc/', '').replace('/trpc/', '');
+      console.log("📡 Procedure path:", procedurePath);
+      
+      return await createContext(opts);
+    } catch (error) {
+      console.error("❌ Error in createContext:", error);
+      return await createContext(opts);
+    }
   },
   onError: ({ error, path, type }) => {
     console.error(`\n❌ tRPC ERROR`);
-    console.error(`Path: ${path}`);
-    console.error(`Type: ${type}`);
-    console.error(`Error:`, error);
+    console.error(`Requested path: ${path}`);
+    console.error(`Error type: ${type}`);
+    console.error(`Error code: ${(error as any).code}`);
+    console.error(`Error message: ${error.message}`);
     
     if ((error as any).code === 'NOT_FOUND' || (error as any).code === 'BAD_REQUEST') {
       console.error(`\n❌ PROCEDURE NOT FOUND: ${path}`);
-      console.error("This means the router doesn't have this path registered.");
       console.error("\n📋 AVAILABLE ROUTER STRUCTURE:");
-      console.log(JSON.stringify(getRouterStructure(appRouter), null, 2));
-      console.error("\n🔍 Did you mean one of these?");
-      
-      // Try to suggest similar paths
       const structure = getRouterStructure(appRouter);
-      if (structure.news?.articles) {
-        console.error("Available procedures under news.articles:", structure.news.articles);
+      console.log(JSON.stringify(structure, null, 2));
+      
+      // Show available procedures
+      if (structure.news && typeof structure.news === 'object') {
+        if (structure.news.articles && typeof structure.news.articles === 'object') {
+          console.error("\n✅ Available procedures under news.articles:");
+          Object.keys(structure.news.articles).forEach(proc => {
+            console.error(`  - news.articles.${proc}`);
+          });
+        }
       }
     }
   },
 });
 
-// Mount the tRPC middleware - CRITICAL: must handle /trpc/* for path-based routing
-// tRPC sends requests like: POST /trpc/news.articles.list
-app.all("/trpc", trpcMiddleware);
+// Mount the tRPC middleware
+// IMPORTANT: Order matters! More specific routes should come first
+// /trpc/* must come before /trpc to catch path-based requests
 app.all("/trpc/*", trpcMiddleware);
+app.all("/trpc", trpcMiddleware);
 
 // Helper to inspect router structure recursively
 function getRouterStructure(router: any, depth = 0): any {
