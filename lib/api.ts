@@ -4,10 +4,21 @@
 import { Article, Category, Source } from "@/types/news";
 
 const getBaseUrl = () => {
+  // Rork automatically sets this - check if it's available
   if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+    const baseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL;
+    console.log("🌐 API Base URL:", baseUrl);
+    return baseUrl;
   }
-  throw new Error("No base url found, please set EXPO_PUBLIC_RORK_API_BASE_URL");
+  
+  // Fallback for development
+  if (typeof window !== "undefined") {
+    const baseUrl = window.location.origin;
+    console.log("🌐 Using window.location.origin as base URL:", baseUrl);
+    return baseUrl;
+  }
+  
+  throw new Error("No base url found - Rork should set EXPO_PUBLIC_RORK_API_BASE_URL automatically");
 };
 
 interface ApiResponse<T> {
@@ -22,10 +33,16 @@ class ApiClient {
 
   constructor() {
     this.baseUrl = getBaseUrl();
+    console.log("🔧 ApiClient initialized with base URL:", this.baseUrl);
   }
 
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    // Ensure endpoint starts with /
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const url = `${this.baseUrl}${cleanEndpoint}`;
+    
+    console.log(`🌐 Making request to: ${url}`);
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
@@ -41,7 +58,12 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      console.log(`📡 Response URL: ${response.url}`);
+
       if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        console.error(`❌ HTTP ${response.status} Error:`, errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -51,10 +73,11 @@ class ApiClient {
         throw new Error(data.error || "API request failed");
       }
 
+      console.log(`✅ API request successful, returning data`);
       return data.data as T;
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error(`❌ API Error [${endpoint}]:`, error);
+      console.error(`❌ API Error [${cleanEndpoint}]:`, error);
       throw error;
     }
   }
@@ -74,7 +97,10 @@ class ApiClient {
     if (params?.featured) query.append("featured", "true");
     if (params?.breaking) query.append("breaking", "true");
 
-    return this.fetch<Article[]>(`/api/articles?${query.toString()}`);
+    const queryString = query.toString();
+    const endpoint = `/api/articles${queryString ? `?${queryString}` : ""}`;
+    console.log(`📰 Fetching articles from: ${endpoint}`);
+    return this.fetch<Article[]>(endpoint);
   }
 
   async getArticleById(id: string): Promise<Article> {
@@ -97,6 +123,7 @@ class ApiClient {
 
   // Categories
   async getCategories(): Promise<Category[]> {
+    console.log("📂 Fetching categories from: /api/categories");
     return this.fetch<Category[]>("/api/categories");
   }
 
@@ -120,4 +147,3 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
-
