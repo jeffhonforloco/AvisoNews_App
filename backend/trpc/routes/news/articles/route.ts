@@ -12,13 +12,24 @@ let initializationPromise: Promise<void> | null = null;
 async function ensureInitialized(): Promise<void> {
   if (articlesStore.length === 0 && !initializationPromise) {
     initializationPromise = initializeNewsStore();
-    await initializationPromise;
+    try {
+      await initializationPromise;
+    } catch (error) {
+      console.error("Initialization error:", error);
+      // Don't throw - we'll use fallback
+    }
   } else if (initializationPromise) {
-    await initializationPromise;
+    try {
+      await initializationPromise;
+    } catch (error) {
+      console.error("Initialization error:", error);
+    }
   }
   
   // If still empty after initialization, use mock data as fallback
+  // This ensures the app always has content to show
   if (articlesStore.length === 0) {
+    console.log("⚠️ Using mock articles as fallback");
     articlesStore = [...mockArticles];
   }
 }

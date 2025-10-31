@@ -133,16 +133,40 @@ export async function fetchFromRSS(config: NewsFetcherConfig): Promise<Article[]
   }
 
   try {
-    // Use a CORS proxy for RSS feeds (in production, use your own proxy or backend)
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(config.feedUrl)}`;
-    const response = await fetch(proxyUrl);
+    // Try direct fetch first (works in Node.js/server environment)
+    let xmlText: string;
+    let response: Response;
     
-    if (!response.ok) {
-      throw new Error(`RSS fetch error: ${response.statusText}`);
-    }
+    try {
+      // Direct fetch (works in server/Node.js environments)
+      response = await fetch(config.feedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; AvisoNews/1.0)',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Direct fetch failed: ${response.statusText}`);
+      }
+      
+      xmlText = await response.text();
+    } catch (directError) {
+      // Fallback to CORS proxy if direct fetch fails
+      console.log(`Direct fetch failed, trying CORS proxy for ${config.sourceName}...`);
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(config.feedUrl)}`;
+      response = await fetch(proxyUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; AvisoNews/1.0)',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`RSS fetch error: ${response.statusText}`);
+      }
 
-    const data = await response.json();
-    const xmlText = data.contents;
+      const data = await response.json();
+      xmlText = data.contents;
+    }
 
     // Simple RSS parser (for production, use a proper XML parser like rss-parser)
     const items = parseRSSFeed(xmlText);

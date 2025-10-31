@@ -52,8 +52,13 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
     [incrementViewMutation]
   );
 
-  // Use real articles from API (no mock fallback - let initialization handle it)
+  // Use real articles from API
+  // If API returns empty and there's no error, it might still be loading
+  // Show empty state rather than error if data is simply not available yet
   const rawArticles = articlesQuery.data?.articles || [];
+  
+  // If we have an error but no data, and we're not loading, show error
+  // Otherwise, show what we have (even if empty, initialization might be in progress)
   
   // Sort articles by newest first (using importedAt or publishedAt)
   const articles = sortArticlesByNewest(rawArticles);

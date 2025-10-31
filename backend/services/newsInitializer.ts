@@ -1,6 +1,7 @@
 // News Initializer - Fetches real news on startup to replace mock data
 import { fetchNews } from "./newsFetcher";
 import { addArticlesToStore } from "@/backend/trpc/routes/news/articles/route";
+import { generateFallbackArticles } from "./simpleNewsFetcher";
 
 let initialized = false;
 
@@ -82,14 +83,77 @@ export async function initializeNewsStore(): Promise<void> {
       addArticlesToStore(uniqueArticles);
       console.log(`✅ Successfully loaded ${uniqueArticles.length} real news articles`);
     } else {
-      console.warn("⚠️ No articles fetched. Using fallback sources...");
+      console.warn("⚠️ No articles fetched from RSS feeds. Will try alternative sources...");
+      // Try a simpler direct fetch without proxy
+      await tryDirectRSSFetch();
+      
+      // If still no articles, use generated fallback articles
+      const store = await import("@/backend/trpc/routes/news/articles/route");
+      const currentCount = store.getArticlesStore().length;
+      if (currentCount === 0) {
+        const fallbackArticles = generateFallbackArticles();
+        addArticlesToStore(fallbackArticles);
+        console.log(`✅ Added ${fallbackArticles.length} fallback articles to ensure app has content`);
+      }
     }
 
     initialized = true;
   } catch (error) {
     console.error("❌ Error initializing news store:", error);
-    // Continue anyway - the store will have mock data as fallback
+    console.error("Full error:", error instanceof Error ? error.message : String(error));
+    // Try alternative approach
+    try {
+      await tryDirectRSSFetch();
+      
+      // Check if we got any articles from direct fetch
+      const store = await import("@/backend/trpc/routes/news/articles/route");
+      const currentCount = store.getArticlesStore().length;
+      
+      // If still no articles, use generated fallback
+      if (currentCount === 0) {
+        const fallbackArticles = generateFallbackArticles();
+        addArticlesToStore(fallbackArticles);
+        console.log(`✅ Added ${fallbackArticles.length} fallback articles after error`);
+      }
+    } catch (fallbackError) {
+      console.error("❌ Fallback also failed:", fallbackError);
+      // Last resort: add fallback articles
+      const store = await import("@/backend/trpc/routes/news/articles/route");
+      const currentCount = store.getArticlesStore().length;
+      if (currentCount === 0) {
+        const fallbackArticles = generateFallbackArticles();
+        addArticlesToStore(fallbackArticles);
+        console.log(`✅ Added ${fallbackArticles.length} fallback articles as last resort`);
+      }
+    }
     initialized = true;
+  }
+}
+
+/**
+ * Try fetching from RSS feeds directly (for environments where CORS proxy doesn't work)
+ */
+async function tryDirectRSSFetch(): Promise<void> {
+  try {
+    console.log("🔄 Trying direct RSS fetch...");
+    const { fetchNews } = await import("./newsFetcher");
+    
+    // Try fetching just from BBC which is reliable
+    const articles = await fetchNews({
+      sourceId: "bbc-direct",
+      sourceName: "BBC News",
+      apiType: "rss",
+      feedUrl: "https://feeds.bbci.co.uk/news/rss.xml",
+      category: "world",
+    });
+    
+    if (articles.length > 0) {
+      const { addArticlesToStore } = await import("@/backend/trpc/routes/news/articles/route");
+      addArticlesToStore(articles);
+      console.log(`✅ Direct fetch successful: ${articles.length} articles`);
+    }
+  } catch (error) {
+    console.error("Direct RSS fetch failed:", error);
   }
 }
 
