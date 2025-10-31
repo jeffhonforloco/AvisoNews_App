@@ -1,70 +1,107 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+// Admin Auth Provider - Updated for REST API
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { trpc } from "@/lib/trpc";
-import { AdminUser } from "@/types/admin";
+import { api } from "@/lib/api";
+
+interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  permissions: string[];
+}
 
 interface AdminAuthContextType {
-  isAuthenticated: boolean;
-  user: AdminUser | null;
+  admin: AdminUser | null;
   authToken: string | null;
-  setAuthToken: (token: string | null) => void;
-  logout: () => void;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  setAuthToken: (token: string | null) => Promise<void>;
+  logout: () => Promise<void>;
   checkPermission: (permission: string) => boolean;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
+export function AdminAuthProvider({ children }: { children: ReactNode }) {
+  const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [authToken, setAuthTokenState] = useState<string | null>(null);
-  const [user, setUser] = useState<AdminUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load token from storage on mount
+  // Load token on mount
   useEffect(() => {
-    AsyncStorage.getItem("admin_auth_token").then((token) => {
-      if (token) {
-        setAuthTokenState(token);
-      }
-    });
+    loadAuthToken();
   }, []);
 
-  // Fetch current admin when token changes
-  const { data: currentAdmin } = trpc.admin.auth.getCurrent.useQuery(undefined, {
-    enabled: !!authToken,
-    retry: false,
-    onSuccess: (data) => {
-      setUser(data);
-    },
-    onError: () => {
-      // If fetching user fails, clear token
-      setAuthToken(null);
-    },
-  });
+  const loadAuthToken = async () => {
+    try {
+      const token = await AsyncStorage.getItem("admin_auth_token");
+      if (token) {
+        setAuthTokenState(token);
+        // TODO: Fetch admin user from API
+        // For now, use mock admin
+        setAdmin({
+          id: "1",
+          email: "admin@avisonews.com",
+          name: "Admin User",
+          role: "admin",
+          permissions: ["all"],
+        });
+      }
+    } catch (error) {
+      console.error("Error loading auth token:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const setAuthToken = async (token: string | null) => {
-    setAuthTokenState(token);
-    if (token) {
-      await AsyncStorage.setItem("admin_auth_token", token);
-    } else {
-      await AsyncStorage.removeItem("admin_auth_token");
-      setUser(null);
+    try {
+      if (token) {
+        await AsyncStorage.setItem("admin_auth_token", token);
+        setAuthTokenState(token);
+        // TODO: Fetch admin user from API with token
+        setAdmin({
+          id: "1",
+          email: "admin@avisonews.com",
+          name: "Admin User",
+          role: "admin",
+          permissions: ["all"],
+        });
+      } else {
+        await AsyncStorage.removeItem("admin_auth_token");
+        setAuthTokenState(null);
+        setAdmin(null);
+      }
+    } catch (error) {
+      console.error("Error setting auth token:", error);
+      throw error;
     }
   };
 
   const logout = async () => {
-    await setAuthToken(null);
+    try {
+      await AsyncStorage.removeItem("admin_auth_token");
+      setAuthTokenState(null);
+      setAdmin(null);
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
   };
 
   const checkPermission = (permission: string): boolean => {
-    if (!user) return false;
-    return user.permissions.includes(permission as any);
+    if (!admin) return false;
+    if (admin.permissions.includes("all")) return true;
+    return admin.permissions.includes(permission);
   };
 
   return (
     <AdminAuthContext.Provider
       value={{
-        isAuthenticated: !!authToken && !!user,
-        user,
+        admin,
         authToken,
+        isLoading,
+        isAuthenticated: !!admin && !!authToken,
         setAuthToken,
         logout,
         checkPermission,
@@ -77,9 +114,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAdminAuth() {
   const context = useContext(AdminAuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAdminAuth must be used within AdminAuthProvider");
   }
   return context;
 }
-

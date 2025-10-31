@@ -14,31 +14,38 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Globe, Lock, Mail } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { trpc } from "@/lib/trpc";
 import { useAdminAuth } from "@/providers/AdminAuthProvider";
 
 export default function AdminLoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { setAuthToken } = useAdminAuth();
 
-  const loginMutation = trpc.admin.auth.login.useMutation({
-    onSuccess: (data) => {
-      setAuthToken(data.token);
-      router.replace("/admin/(tabs)/dashboard");
-    },
-    onError: (error) => {
-      Alert.alert("Login Failed", error.message);
-    },
-  });
-
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please enter email and password");
       return;
     }
-    loginMutation.mutate({ email, password });
+
+    // Demo login - no backend auth needed for now
+    // In production, this would call: POST /api/admin/login
+    if (email === "admin@avisonews.com" && password === "admin123") {
+      setIsLoading(true);
+      try {
+        // Generate a mock token
+        const token = `mock_token_${Date.now()}`;
+        await setAuthToken(token);
+        router.replace("/admin/(tabs)/dashboard");
+      } catch (error) {
+        Alert.alert("Login Failed", "An error occurred");
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      Alert.alert("Login Failed", "Invalid email or password");
+    }
   };
 
   // Demo credentials for quick access
@@ -96,11 +103,11 @@ export default function AdminLoginScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.loginButton, loginMutation.isPending && styles.loginButtonDisabled]}
+                style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
                 onPress={handleLogin}
-                disabled={loginMutation.isPending}
+                disabled={isLoading}
               >
-                {loginMutation.isPending ? (
+                {isLoading ? (
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text style={styles.loginButtonText}>Sign In</Text>
