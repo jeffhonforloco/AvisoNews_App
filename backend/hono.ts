@@ -30,15 +30,22 @@ app.use("*", cors({
 }));
 
 // Debug middleware - log ALL incoming requests with full details
+// PLACED FIRST so it catches ALL requests before route matching
 app.use("*", async (c, next) => {
-  const url = new URL(c.req.url);
-  console.log(`\n📡 === INCOMING REQUEST ===`);
-  console.log(`   Method: ${c.req.method}`);
-  console.log(`   Path: ${c.req.path}`);
-  console.log(`   Full URL: ${c.req.url}`);
-  console.log(`   Query: ${c.req.query()}`);
-  await next();
-  console.log(`✅ Response: ${c.res.status}\n`);
+  try {
+    const url = new URL(c.req.url);
+    console.log(`\n📡 === INCOMING REQUEST ===`);
+    console.log(`   Method: ${c.req.method}`);
+    console.log(`   Path: ${c.req.path}`);
+    console.log(`   Full URL: ${c.req.url}`);
+    console.log(`   Query: ${JSON.stringify(c.req.query())}`);
+    console.log(`   Raw Path: ${c.req.raw.path}`);
+    await next();
+    console.log(`✅ Response: ${c.res.status}\n`);
+  } catch (error) {
+    console.error("❌ Error in debug middleware:", error);
+    await next();
+  }
 });
 
 // Health check - test base route
