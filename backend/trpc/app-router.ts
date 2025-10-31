@@ -15,6 +15,45 @@ import {
   getSources,
   getSourceById,
 } from "./routes/news/sources/route";
+import {
+  login,
+  getCurrentAdmin,
+  checkPermission,
+} from "./routes/admin/auth/route";
+import {
+  getDashboardStats,
+  getActivityLogs,
+} from "./routes/admin/dashboard/route";
+import {
+  getArticlesForAdmin,
+  updateArticle,
+  deleteArticle,
+  moderateArticle,
+  bulkOperation,
+  getBulkOperations,
+} from "./routes/admin/articles/route";
+import {
+  getAutomationConfigs,
+  getAutomationConfig,
+  createAutomationConfig,
+  updateAutomationConfig,
+  deleteAutomationConfig,
+  runAutomation,
+} from "./routes/admin/automation/route";
+import {
+  getCuratedSubmissions,
+  submitCuratedArticle,
+  reviewCuratedSubmission,
+  updateCuratedSubmission,
+  deleteCuratedSubmission,
+} from "./routes/admin/curation/route";
+import {
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+} from "./routes/admin/users/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -35,6 +74,47 @@ export const appRouter = createTRPCRouter({
     sources: createTRPCRouter({
       list: getSources,
       byId: getSourceById,
+    }),
+  }),
+  admin: createTRPCRouter({
+    auth: createTRPCRouter({
+      login,
+      getCurrent: getCurrentAdmin,
+      checkPermission,
+    }),
+    dashboard: createTRPCRouter({
+      stats: getDashboardStats,
+      activityLogs: getActivityLogs,
+    }),
+    articles: createTRPCRouter({
+      list: getArticlesForAdmin,
+      update: updateArticle,
+      delete: deleteArticle,
+      moderate: moderateArticle,
+      bulk: bulkOperation,
+      bulkOperations: getBulkOperations,
+    }),
+    automation: createTRPCRouter({
+      list: getAutomationConfigs,
+      get: getAutomationConfig,
+      create: createAutomationConfig,
+      update: updateAutomationConfig,
+      delete: deleteAutomationConfig,
+      run: runAutomation,
+    }),
+    curation: createTRPCRouter({
+      list: getCuratedSubmissions,
+      submit: submitCuratedArticle,
+      review: reviewCuratedSubmission,
+      update: updateCuratedSubmission,
+      delete: deleteCuratedSubmission,
+    }),
+    users: createTRPCRouter({
+      list: getUsers,
+      get: getUser,
+      create: createUser,
+      update: updateUser,
+      delete: deleteUser,
     }),
   }),
 });

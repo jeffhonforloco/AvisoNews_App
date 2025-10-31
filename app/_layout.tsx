@@ -12,6 +12,7 @@ import { FollowingProvider } from "@/providers/FollowingProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { LocalizationProvider } from "@/providers/LocalizationProvider";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
+import { AdminAuthProvider } from "@/providers/AdminAuthProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AuthPromptModal from "@/components/AuthPromptModal";
 
@@ -95,6 +96,13 @@ function RootLayoutNav() {
           animation: "slide_from_right"
         }} 
       />
+      <Stack.Screen 
+        name="admin" 
+        options={{ 
+          headerShown: false,
+          presentation: "card"
+        }} 
+      />
     </Stack>
   );
 }
@@ -161,17 +169,19 @@ export default function RootLayout() {
         <PreferencesProvider>
           <ThemeProvider>
             <LocalizationProvider>
-              <AuthProvider>
-                <SubscriptionProvider>
-                  <FollowingProvider>
-                    <NewsProvider>
-                      <GestureHandlerRootView style={styles.container}>
-                        <AppWithAuth />
-                      </GestureHandlerRootView>
-                    </NewsProvider>
-                  </FollowingProvider>
-                </SubscriptionProvider>
-              </AuthProvider>
+              <AdminAuthProvider>
+                <AuthProvider>
+                  <SubscriptionProvider>
+                    <FollowingProvider>
+                      <NewsProvider>
+                        <GestureHandlerRootView style={styles.container}>
+                          <AppWithAuth />
+                        </GestureHandlerRootView>
+                      </NewsProvider>
+                    </FollowingProvider>
+                  </SubscriptionProvider>
+                </AuthProvider>
+              </AdminAuthProvider>
             </LocalizationProvider>
           </ThemeProvider>
         </PreferencesProvider>
