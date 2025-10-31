@@ -3,6 +3,8 @@ import createContextHook from "@nkzw/create-context-hook";
 import { trpc } from "@/lib/trpc";
 import { Article, Category } from "@/types/news";
 import { mockArticles } from "@/mocks/articles";
+import { sortArticlesByNewest } from "@/utils/timeUtils";
+import { REFRESH_INTERVALS, CACHE_STALE_TIME, ARTICLE_LIMITS } from "@/config/newsConfig";
 
 interface NewsContextType {
   articles: Article[];
@@ -11,23 +13,26 @@ interface NewsContextType {
   error: Error | null;
   refetch: () => void;
   incrementViewCount: (articleId: string) => void;
+  lastUpdated: Date | null;
 }
 
 export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => {
-  // Fetch articles from API
+  // Fetch articles from API with shorter stale time for real-time updates
   const articlesQuery = trpc.news.articles.list.useQuery(
-    { limit: 50 },
+    { limit: ARTICLE_LIMITS.DEFAULT },
     {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: CACHE_STALE_TIME.ARTICLES,
       gcTime: 1000 * 60 * 30, // 30 minutes
       retry: 2,
       retryDelay: 1000,
+      refetchInterval: REFRESH_INTERVALS.ARTICLES, // Auto-refresh every 2 minutes
+      refetchIntervalInBackground: false, // Only refresh when app is active
     }
   );
 
   // Fetch categories from API
   const categoriesQuery = trpc.news.categories.list.useQuery(undefined, {
-    staleTime: 1000 * 60 * 60, // 1 hour (categories don't change often)
+    staleTime: CACHE_STALE_TIME.CATEGORIES,
     gcTime: 1000 * 60 * 60 * 24, // 24 hours
     retry: 2,
   });
@@ -48,9 +53,16 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
   );
 
   // Fallback to mock data if API fails
-  const articles =
+  const rawArticles =
     articlesQuery.data?.articles || (articlesQuery.error ? mockArticles : []);
+  
+  // Sort articles by newest first (using importedAt or publishedAt)
+  const articles = sortArticlesByNewest(rawArticles);
+  
   const categories = categoriesQuery.data || [];
+  const lastUpdated = articlesQuery.dataUpdatedAt 
+    ? new Date(articlesQuery.dataUpdatedAt) 
+    : null;
 
   return {
     articles,
@@ -62,5 +74,6 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
       categoriesQuery.refetch();
     },
     incrementViewCount,
+    lastUpdated,
   };
 });

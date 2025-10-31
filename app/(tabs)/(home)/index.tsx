@@ -34,6 +34,7 @@ import {
 } from "lucide-react-native";
 import EnhancedAggregator from "@/components/EnhancedAggregator";
 import { Article } from "@/types/news";
+import { getNewBadgeLevel, formatTimeAgo, isNewArticle } from "@/utils/timeUtils";
 
 const { width } = Dimensions.get('window');
 
@@ -57,9 +58,19 @@ export default function HomeScreen() {
   }, []);
 
   const filteredArticles = useMemo(() => {
-    if (selectedCategory === 'all') return articles;
-    if (selectedCategory === 'breaking') return articles.filter(a => a.breaking);
-    return articles.filter(a => a.category?.toLowerCase() === selectedCategory);
+    let filtered = [...articles];
+    
+    // Apply category filter
+    if (selectedCategory === 'all') {
+      // Keep all articles
+    } else if (selectedCategory === 'breaking') {
+      filtered = filtered.filter(a => a.breaking);
+    } else {
+      filtered = filtered.filter(a => a.category?.toLowerCase() === selectedCategory);
+    }
+    
+    // Articles are already sorted by newest first from NewsProvider
+    return filtered;
   }, [articles, selectedCategory]);
 
   const featuredArticle = useMemo(() => 
@@ -166,6 +177,11 @@ export default function HomeScreen() {
                   day: 'numeric'
                 }).toUpperCase()}
               </Text>
+              {articles.length > 0 && (
+                <Text style={[styles.updateIndicator, { color: colors.text.secondary }]}>
+                  {isNewArticle(articles[0]) ? 'Updated just now' : 'Updated recently'}
+                </Text>
+              )}
             </View>
           </View>
         </View>
@@ -290,9 +306,21 @@ export default function HomeScreen() {
                   style={styles.topStoryImage}
                 />
                 <View style={styles.topStoryContent}>
-                  <Text style={[styles.topStoryCategory, { color: colors.primary }]}>
-                    {article.category?.toUpperCase()}
-                  </Text>
+                  <View style={styles.topStoryHeader}>
+                    <Text style={[styles.topStoryCategory, { color: colors.primary }]}>
+                      {article.category?.toUpperCase()}
+                    </Text>
+                    {getNewBadgeLevel(article) && (
+                      <View style={[
+                        styles.newBadgeSmall,
+                        getNewBadgeLevel(article) === 'very-recent' && { backgroundColor: '#FF3B30' },
+                        getNewBadgeLevel(article) === 'recent' && { backgroundColor: '#FF9500' },
+                        getNewBadgeLevel(article) === 'today' && { backgroundColor: colors.primary },
+                      ]}>
+                        <Text style={styles.newBadgeTextSmall}>NEW</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={[styles.topStoryTitle, { color: colors.text.primary }]} numberOfLines={3}>
                     {article.title}
                   </Text>
@@ -301,10 +329,7 @@ export default function HomeScreen() {
                       {article.source}
                     </Text>
                     <Text style={[styles.topStoryTime, { color: colors.text.secondary }]}>
-                      {new Date(article.publishedAt).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit'
-                      })}
+                      {formatTimeAgo(article.importedAt || article.publishedAt)}
                     </Text>
                   </View>
                 </View>
@@ -334,13 +359,23 @@ export default function HomeScreen() {
                 style={styles.streamImage}
               />
               <View style={styles.streamContent}>
-                <View style={styles.streamHeader}>
+                  <View style={styles.streamHeader}>
                   <Text style={[styles.streamCategory, { color: colors.primary }]}>
                     {article.category?.toUpperCase()}
                   </Text>
                   {article.breaking && (
                     <View style={styles.breakingBadge}>
                       <Text style={styles.breakingBadgeText}>BREAKING</Text>
+                    </View>
+                  )}
+                  {getNewBadgeLevel(article) && (
+                    <View style={[
+                      styles.newBadge,
+                      getNewBadgeLevel(article) === 'very-recent' && { backgroundColor: '#FF3B30' },
+                      getNewBadgeLevel(article) === 'recent' && { backgroundColor: '#FF9500' },
+                      getNewBadgeLevel(article) === 'today' && { backgroundColor: colors.primary },
+                    ]}>
+                      <Text style={styles.newBadgeText}>NEW</Text>
                     </View>
                   )}
                 </View>
@@ -361,10 +396,7 @@ export default function HomeScreen() {
                     </Text>
                     <Text style={[styles.streamDot, { color: colors.text.secondary }]}>•</Text>
                     <Text style={[styles.streamTime, { color: colors.text.secondary }]}>
-                      {new Date(article.publishedAt).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit'
-                      })}
+                      {formatTimeAgo(article.importedAt || article.publishedAt)}
                     </Text>
                   </View>
                   <View style={styles.streamActions}>
@@ -821,5 +853,45 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     marginTop: 2,
+  },
+  newBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  newBadgeText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  newBadgeSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  newBadgeTextSmall: {
+    color: 'white',
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  topStoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  updateIndicator: {
+    fontSize: 9,
+    fontWeight: '500',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });
