@@ -5,8 +5,17 @@ import { appRouter } from "./trpc/app-router";
 import { createContext } from "./trpc/create-context";
 
 // Log router structure for debugging
-console.log("🔍 Router keys:", Object.keys(appRouter._def.procedures || {}));
-console.log("🔍 Router structure:", JSON.stringify(Object.keys(appRouter._def.record || {}), null, 2));
+try {
+  const routerRecord = appRouter._def?.record;
+  if (routerRecord) {
+    console.log("✅ Router loaded. Available routes:", Object.keys(routerRecord));
+    console.log("📰 News routes:", routerRecord.news ? Object.keys(routerRecord.news._def?.record || {}) : "Not found");
+  } else {
+    console.warn("⚠️ Router record not found");
+  }
+} catch (error) {
+  console.warn("⚠️ Could not inspect router structure:", error);
+}
 
 // app will be mounted at /api
 const app = new Hono();
