@@ -16,41 +16,59 @@ import {
   Mail,
   ChevronRight,
   LogOut,
+  LucideIcon,
 } from "lucide-react-native";
 import { usePreferences } from "@/providers/PreferencesProvider";
+
+type SwitchItem = {
+  icon: LucideIcon;
+  label: string;
+  type: "switch";
+  key: string;
+  value: boolean;
+};
+
+type LinkItem = {
+  icon: LucideIcon;
+  label: string;
+  type: "link";
+  value?: string;
+};
+
+type SettingItem = SwitchItem | LinkItem;
 
 export default function SettingsScreen() {
   const { preferences, updatePreference } = usePreferences();
 
-  const settingsSections = [
+  const settingsSections: { title: string; items: SettingItem[] }[] = [
     {
       title: "Preferences",
       items: [
         {
           icon: Bell,
           label: "Push Notifications",
-          type: "switch",
+          type: "switch" as const,
           key: "pushNotifications",
           value: preferences.pushNotifications,
         },
         {
           icon: Mail,
           label: "Newsletter",
-          type: "switch",
+          type: "switch" as const,
           key: "newsletter",
           value: preferences.newsletter,
         },
         {
           icon: Moon,
           label: "Dark Mode",
-          type: "switch",
+          type: "switch" as const,
           key: "darkMode",
           value: preferences.darkMode,
         },
         {
           icon: Globe,
           label: "Language",
-          type: "link",
+          type: "link" as const,
           value: "English",
         },
       ],
@@ -61,17 +79,17 @@ export default function SettingsScreen() {
         {
           icon: Info,
           label: "About AvisoNews",
-          type: "link",
+          type: "link" as const,
         },
         {
           icon: Shield,
           label: "Privacy Policy",
-          type: "link",
+          type: "link" as const,
         },
         {
           icon: Mail,
           label: "Contact Us",
-          type: "link",
+          type: "link" as const,
         },
       ],
     },
@@ -109,7 +127,7 @@ export default function SettingsScreen() {
                     {item.type === "switch" ? (
                       <Switch
                         value={item.value}
-                        onValueChange={(value) => handleToggle(item.key!, value)}
+                        onValueChange={(value) => handleToggle(item.key, value)}
                         trackColor={{ false: "#E5E5EA", true: "#FF6B6B" }}
                         thumbColor="#FFFFFF"
                       />

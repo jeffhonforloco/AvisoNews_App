@@ -5,18 +5,16 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
 } from "react-native";
 import { ChevronRight, Cpu, DollarSign, Globe, Heart, Gamepad2, Microscope } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
 
 const categories = [
   {
     id: "tech",
     name: "Technology",
     icon: Cpu,
-    gradient: ["#667EEA", "#764BA2"],
+    gradient: ["#667EEA", "#764BA2"] as const,
     description: "Latest in tech and innovation",
     count: 156,
   },
@@ -24,7 +22,7 @@ const categories = [
     id: "business",
     name: "Business",
     icon: DollarSign,
-    gradient: ["#F093FB", "#F5576C"],
+    gradient: ["#F093FB", "#F5576C"] as const,
     description: "Markets, finance, and economy",
     count: 243,
   },
@@ -32,7 +30,7 @@ const categories = [
     id: "world",
     name: "World",
     icon: Globe,
-    gradient: ["#4FACFE", "#00F2FE"],
+    gradient: ["#4FACFE", "#00F2FE"] as const,
     description: "Global news and events",
     count: 189,
   },
@@ -40,7 +38,7 @@ const categories = [
     id: "health",
     name: "Health",
     icon: Heart,
-    gradient: ["#FA709A", "#FEE140"],
+    gradient: ["#FA709A", "#FEE140"] as const,
     description: "Health and wellness updates",
     count: 97,
   },
@@ -48,7 +46,7 @@ const categories = [
     id: "gaming",
     name: "Gaming",
     icon: Gamepad2,
-    gradient: ["#30CFD0", "#330867"],
+    gradient: ["#30CFD0", "#330867"] as const,
     description: "Gaming news and reviews",
     count: 64,
   },
@@ -56,7 +54,7 @@ const categories = [
     id: "science",
     name: "Science",
     icon: Microscope,
-    gradient: ["#A8EDEA", "#FED6E3"],
+    gradient: ["#A8EDEA", "#FED6E3"] as const,
     description: "Scientific discoveries",
     count: 82,
   },
