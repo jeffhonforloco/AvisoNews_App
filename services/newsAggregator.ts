@@ -3,269 +3,338 @@ import { Analytics } from './analytics';
 
 /**
  * News Aggregator Service
- * Integrates multiple news APIs to fetch comprehensive news coverage
+ * Uses completely free, open APIs with no authentication required:
+ * - Hacker News API (tech news)
+ * - Dev.to API (developer content)
+ * - Reddit JSON feeds (various categories)
  */
 
-const NEWS_API_KEY = process.env.EXPO_PUBLIC_NEWS_API_KEY || 'demo';
-const GNEWS_API_KEY = process.env.EXPO_PUBLIC_GNEWS_API_KEY || 'demo';
-
-interface NewsAPIArticle {
-  source: { id: string | null; name: string };
-  author: string | null;
+interface HackerNewsStory {
+  id: number;
   title: string;
-  description: string;
-  url: string;
-  urlToImage: string;
-  publishedAt: string;
-  content: string;
+  url?: string;
+  by: string;
+  time: number;
+  score: number;
+  descendants?: number;
+  text?: string;
 }
 
-interface GNewsArticle {
+interface DevToArticle {
+  id: number;
   title: string;
   description: string;
-  content: string;
   url: string;
-  image: string;
-  publishedAt: string;
-  source: { name: string; url: string };
+  cover_image: string;
+  published_at: string;
+  tag_list: string[];
+  user: {
+    name: string;
+    username: string;
+  };
+  reading_time_minutes: number;
+  public_reactions_count: number;
+}
+
+interface RedditPost {
+  data: {
+    title: string;
+    url: string;
+    selftext: string;
+    author: string;
+    created_utc: number;
+    thumbnail: string;
+    preview?: {
+      images: Array<{
+        source: { url: string };
+      }>;
+    };
+    subreddit: string;
+    ups: number;
+    num_comments: number;
+    permalink: string;
+  };
 }
 
 class NewsAggregatorService {
   private baseUrls = {
-    newsapi: 'https://newsapi.org/v2',
-    gnews: 'https://gnews.io/api/v4',
-    newsdata: 'https://newsdata.io/api/1',
+    hackernews: 'https://hacker-news.firebaseio.com/v0',
+    devto: 'https://dev.to/api',
+    reddit: 'https://www.reddit.com',
   };
 
   /**
-   * Fetch articles from NewsAPI.org
+   * Fetch articles from Hacker News (completely free, no auth)
    */
-  private async fetchFromNewsAPI(category: string, count: number = 20): Promise<Article[]> {
+  private async fetchFromHackerNews(count: number = 20): Promise<Article[]> {
     try {
-      const endpoint = `${this.baseUrls.newsapi}/top-headlines`;
-      const params = new URLSearchParams({
-        category: category.toLowerCase(),
-        language: 'en',
-        pageSize: count.toString(),
-        apiKey: NEWS_API_KEY,
-      });
+      // Get top stories IDs
+      const topStoriesResponse = await fetch(
+        `${this.baseUrls.hackernews}/topstories.json`
+      );
+      const storyIds: number[] = await topStoriesResponse.json();
 
-      const response = await fetch(`${endpoint}?${params}`);
-      if (!response.ok) throw new Error('NewsAPI request failed');
+      // Fetch first 'count' stories
+      const stories = await Promise.all(
+        storyIds.slice(0, count).map(async (id) => {
+          const response = await fetch(
+            `${this.baseUrls.hackernews}/item/${id}.json`
+          );
+          return response.json();
+        })
+      );
 
-      const data = await response.json();
-      return this.transformNewsAPIArticles(data.articles || []);
+      return stories
+        .filter((story: HackerNewsStory) => story && story.url) // Only stories with URLs
+        .map((story: HackerNewsStory) => this.transformHackerNewsArticle(story));
     } catch (error) {
-      console.error('[NewsAPI] Fetch error:', error);
-      Analytics.trackError(error as Error, 'newsapi_fetch');
+      console.error('[NewsAggregator] Hacker News fetch error:', error);
+      Analytics.trackError(error as Error, 'hackernews_fetch');
       return [];
     }
   }
 
   /**
-   * Fetch articles from GNews API
+   * Fetch articles from Dev.to (free, no auth required)
    */
-  private async fetchFromGNews(category: string, count: number = 20): Promise<Article[]> {
+  private async fetchFromDevTo(count: number = 20): Promise<Article[]> {
     try {
-      const endpoint = `${this.baseUrls.gnews}/top-headlines`;
-      const params = new URLSearchParams({
-        category: category.toLowerCase(),
-        lang: 'en',
-        max: count.toString(),
-        apikey: GNEWS_API_KEY,
-      });
+      const response = await fetch(
+        `${this.baseUrls.devto}/articles?per_page=${count}&top=7`
+      );
 
-      const response = await fetch(`${endpoint}?${params}`);
-      if (!response.ok) throw new Error('GNews request failed');
+      if (!response.ok) throw new Error('Dev.to request failed');
 
-      const data = await response.json();
-      return this.transformGNewsArticles(data.articles || []);
+      const articles: DevToArticle[] = await response.json();
+      return articles.map((article) => this.transformDevToArticle(article));
     } catch (error) {
-      console.error('[GNews] Fetch error:', error);
-      Analytics.trackError(error as Error, 'gnews_fetch');
+      console.error('[NewsAggregator] Dev.to fetch error:', error);
+      Analytics.trackError(error as Error, 'devto_fetch');
       return [];
     }
   }
 
   /**
-   * Fetch articles from NewsData.io
+   * Fetch articles from Reddit (free, no auth for public posts)
    */
-  private async fetchFromNewsData(category: string, count: number = 10): Promise<Article[]> {
+  private async fetchFromReddit(subreddit: string, count: number = 20): Promise<Article[]> {
     try {
-      const apiKey = process.env.EXPO_PUBLIC_NEWSDATA_API_KEY || 'demo';
-      const endpoint = `${this.baseUrls.newsdata}/news`;
-      const params = new URLSearchParams({
-        category: category.toLowerCase(),
-        language: 'en',
-        apikey: apiKey,
-      });
+      const response = await fetch(
+        `${this.baseUrls.reddit}/r/${subreddit}/hot.json?limit=${count}`,
+        {
+          headers: {
+            'User-Agent': 'AvisoNews/1.0',
+          },
+        }
+      );
 
-      const response = await fetch(`${endpoint}?${params}`);
-      if (!response.ok) throw new Error('NewsData request failed');
+      if (!response.ok) throw new Error('Reddit request failed');
 
       const data = await response.json();
-      return this.transformNewsDataArticles(data.results || []);
+      const posts = data.data.children;
+
+      return posts
+        .filter((post: RedditPost) => !post.data.selftext || post.data.url)
+        .map((post: RedditPost) => this.transformRedditPost(post));
     } catch (error) {
-      console.error('[NewsData] Fetch error:', error);
+      console.error('[NewsAggregator] Reddit fetch error:', error);
+      Analytics.trackError(error as Error, 'reddit_fetch');
       return [];
     }
   }
 
   /**
-   * Aggregate articles from all sources
+   * Main method to aggregate articles from all free sources
    */
   async aggregateArticles(category: string = 'general'): Promise<Article[]> {
     try {
-      Analytics.trackEvent('news_aggregation_started', { category });
+      console.log(`[NewsAggregator] Fetching articles for category: ${category}`);
 
-      // Fetch from multiple sources in parallel
-      const [newsApiArticles, gNewsArticles, newsDataArticles] = await Promise.allSettled([
-        this.fetchFromNewsAPI(category, 15),
-        this.fetchFromGNews(category, 15),
-        this.fetchFromNewsData(category, 10),
-      ]);
+      let sources: Promise<Article[]>[] = [];
 
-      // Combine results
-      const allArticles: Article[] = [
-        ...(newsApiArticles.status === 'fulfilled' ? newsApiArticles.value : []),
-        ...(gNewsArticles.status === 'fulfilled' ? gNewsArticles.value : []),
-        ...(newsDataArticles.status === 'fulfilled' ? newsDataArticles.value : []),
-      ];
+      // Map categories to appropriate sources
+      switch (category.toLowerCase()) {
+        case 'tech':
+        case 'technology':
+          sources = [
+            this.fetchFromHackerNews(15),
+            this.fetchFromDevTo(15),
+            this.fetchFromReddit('technology', 10),
+          ];
+          break;
 
-      // Remove duplicates based on title similarity
-      const uniqueArticles = this.deduplicateArticles(allArticles);
+        case 'world':
+        case 'news':
+          sources = [
+            this.fetchFromReddit('worldnews', 15),
+            this.fetchFromReddit('news', 15),
+          ];
+          break;
 
-      // Sort by published date
-      uniqueArticles.sort((a, b) => {
-        const dateA = new Date(a.importedAt).getTime();
-        const dateB = new Date(b.importedAt).getTime();
-        return dateB - dateA;
-      });
+        case 'business':
+          sources = [
+            this.fetchFromReddit('business', 15),
+            this.fetchFromReddit('Economics', 10),
+            this.fetchFromHackerNews(10),
+          ];
+          break;
 
-      Analytics.trackEvent('news_aggregation_completed', {
+        case 'science':
+          sources = [
+            this.fetchFromReddit('science', 15),
+            this.fetchFromReddit('EverythingScience', 10),
+          ];
+          break;
+
+        case 'sports':
+          sources = [
+            this.fetchFromReddit('sports', 20),
+          ];
+          break;
+
+        case 'entertainment':
+          sources = [
+            this.fetchFromReddit('entertainment', 15),
+            this.fetchFromReddit('movies', 10),
+          ];
+          break;
+
+        default: // 'general' or any other category
+          sources = [
+            this.fetchFromHackerNews(10),
+            this.fetchFromDevTo(10),
+            this.fetchFromReddit('worldnews', 10),
+            this.fetchFromReddit('technology', 5),
+          ];
+      }
+
+      // Fetch all sources in parallel
+      const results = await Promise.all(sources);
+      const allArticles = results.flat();
+
+      console.log(`[NewsAggregator] Fetched ${allArticles.length} articles`);
+
+      // Deduplicate and sort
+      const deduplicated = this.deduplicateArticles(allArticles);
+
+      Analytics.trackEvent('articles_aggregated', {
         category,
-        totalArticles: uniqueArticles.length,
-        sources: ['newsapi', 'gnews', 'newsdata'],
+        count: deduplicated.length,
+        sources: sources.length,
       });
 
-      return uniqueArticles;
+      return deduplicated;
     } catch (error) {
-      console.error('[NewsAggregator] Error:', error);
+      console.error('[NewsAggregator] Aggregation error:', error);
       Analytics.trackError(error as Error, 'news_aggregation');
       return [];
     }
   }
 
   /**
-   * Fetch article content by URL
+   * Transform Hacker News story to Article
+   */
+  private transformHackerNewsArticle(story: HackerNewsStory): Article {
+    const publishDate = new Date(story.time * 1000);
+    const now = new Date();
+    const diffHours = Math.floor((now.getTime() - publishDate.getTime()) / (1000 * 60 * 60));
+
+    return {
+      id: `hn-${story.id}`,
+      title: story.title,
+      titleAi: this.generateAITitle(story.title),
+      excerpt: this.generateExcerpt(story.title),
+      tldr: this.generateTLDR(story.title),
+      imageUrl: this.getPlaceholderImage('tech'),
+      canonicalUrl: story.url || `https://news.ycombinator.com/item?id=${story.id}`,
+      sourceName: 'Hacker News',
+      category: 'tech',
+      tags: this.extractTags(story.title),
+      publishedAt: this.formatRelativeTime(diffHours),
+      readTime: this.calculateReadTime(story.title),
+      viewCount: Math.max(story.score * 10, 100),
+      trending: story.score > 100,
+    };
+  }
+
+  /**
+   * Transform Dev.to article to Article
+   */
+  private transformDevToArticle(article: DevToArticle): Article {
+    const publishDate = new Date(article.published_at);
+    const now = new Date();
+    const diffHours = Math.floor((now.getTime() - publishDate.getTime()) / (1000 * 60 * 60));
+
+    return {
+      id: `devto-${article.id}`,
+      title: article.title,
+      titleAi: this.generateAITitle(article.title),
+      excerpt: article.description || this.generateExcerpt(article.title),
+      tldr: this.generateTLDR(article.description || article.title),
+      imageUrl: article.cover_image || this.getPlaceholderImage('tech'),
+      canonicalUrl: article.url,
+      sourceName: 'Dev.to',
+      category: 'tech',
+      tags: article.tag_list.slice(0, 5),
+      publishedAt: this.formatRelativeTime(diffHours),
+      readTime: article.reading_time_minutes || 5,
+      viewCount: article.public_reactions_count * 5,
+      trending: article.public_reactions_count > 50,
+    };
+  }
+
+  /**
+   * Transform Reddit post to Article
+   */
+  private transformRedditPost(post: RedditPost): Article {
+    const publishDate = new Date(post.data.created_utc * 1000);
+    const now = new Date();
+    const diffHours = Math.floor((now.getTime() - publishDate.getTime()) / (1000 * 60 * 60));
+
+    let imageUrl = this.getPlaceholderImage(post.data.subreddit);
+
+    if (post.data.preview?.images?.[0]?.source?.url) {
+      imageUrl = post.data.preview.images[0].source.url.replace(/&amp;/g, '&');
+    } else if (post.data.thumbnail && post.data.thumbnail.startsWith('http')) {
+      imageUrl = post.data.thumbnail;
+    }
+
+    return {
+      id: `reddit-${post.data.permalink}`,
+      title: post.data.title,
+      titleAi: this.generateAITitle(post.data.title),
+      excerpt: post.data.selftext
+        ? post.data.selftext.substring(0, 200) + '...'
+        : this.generateExcerpt(post.data.title),
+      tldr: this.generateTLDR(post.data.selftext || post.data.title),
+      imageUrl,
+      canonicalUrl: post.data.url,
+      sourceName: `Reddit - r/${post.data.subreddit}`,
+      category: this.mapSubredditToCategory(post.data.subreddit),
+      tags: this.extractTags(post.data.title),
+      publishedAt: this.formatRelativeTime(diffHours),
+      readTime: this.calculateReadTime(post.data.selftext || post.data.title),
+      viewCount: post.data.ups * 2,
+      trending: post.data.ups > 1000,
+    };
+  }
+
+  /**
+   * Fetch full article content from URL
    */
   async fetchArticleContent(url: string): Promise<string> {
     try {
-      // In production, use a content extraction service
-      // For now, return placeholder content
-      return `
-This is the full article content that would be extracted from the source.
+      console.log('[NewsAggregator] Fetching article content from:', url);
 
-In a production environment, you would integrate with services like:
-- Mercury Parser
-- Diffbot Article API
-- Extract.com
-- Custom web scraping solution
+      // For now, return a placeholder since full content extraction
+      // requires web scraping which may violate terms of service
+      // In production, you'd use a service like Mercury Parser or similar
 
-The content would include:
-- Full article text
-- Cleaned formatting
-- No ads or clutter
-- Preserved structure (headings, paragraphs, lists)
-- Images embedded in content
-
-This ensures users can read everything within AvisoNews without leaving the app.
-      `.trim();
+      return `Full article content would be fetched here. This requires web scraping or a content extraction service.\n\nArticle URL: ${url}\n\nFor a production app, consider using services like:\n- Mercury Parser API\n- Diffbot Article API\n- Custom web scraping solution`;
     } catch (error) {
-      console.error('[ContentFetch] Error:', error);
-      return 'Unable to fetch article content.';
+      console.error('[NewsAggregator] Content fetch error:', error);
+      throw error;
     }
-  }
-
-  /**
-   * Transform NewsAPI articles to app format
-   */
-  private transformNewsAPIArticles(articles: NewsAPIArticle[]): Article[] {
-    return articles
-      .filter(article => article.title && article.description)
-      .map((article, index) => ({
-        id: `newsapi_${Date.now()}_${index}`,
-        sourceId: 'newsapi',
-        sourceName: article.source.name,
-        category: this.inferCategory(article.title + ' ' + article.description),
-        title: article.title,
-        titleAi: this.generateAITitle(article.title),
-        excerpt: article.description || '',
-        tldr: this.generateTLDR(article.description || article.content || ''),
-        tags: this.extractTags(article.title + ' ' + article.description),
-        canonicalUrl: article.url,
-        imageUrl: article.urlToImage || 'https://via.placeholder.com/800x400?text=No+Image',
-        publishedAt: this.formatPublishDate(article.publishedAt),
-        importedAt: new Date().toISOString(),
-        status: 'published' as const,
-        viewCount: 0,
-        trending: false,
-        readTime: this.calculateReadTime(article.content || article.description || ''),
-      }));
-  }
-
-  /**
-   * Transform GNews articles to app format
-   */
-  private transformGNewsArticles(articles: GNewsArticle[]): Article[] {
-    return articles
-      .filter(article => article.title && article.description)
-      .map((article, index) => ({
-        id: `gnews_${Date.now()}_${index}`,
-        sourceId: 'gnews',
-        sourceName: article.source.name,
-        category: this.inferCategory(article.title + ' ' + article.description),
-        title: article.title,
-        titleAi: this.generateAITitle(article.title),
-        excerpt: article.description || '',
-        tldr: this.generateTLDR(article.content || article.description || ''),
-        tags: this.extractTags(article.title + ' ' + article.description),
-        canonicalUrl: article.url,
-        imageUrl: article.image || 'https://via.placeholder.com/800x400?text=No+Image',
-        publishedAt: this.formatPublishDate(article.publishedAt),
-        importedAt: new Date().toISOString(),
-        status: 'published' as const,
-        viewCount: 0,
-        trending: false,
-        readTime: this.calculateReadTime(article.content || article.description || ''),
-      }));
-  }
-
-  /**
-   * Transform NewsData.io articles to app format
-   */
-  private transformNewsDataArticles(articles: any[]): Article[] {
-    return articles
-      .filter(article => article.title && article.description)
-      .map((article, index) => ({
-        id: `newsdata_${Date.now()}_${index}`,
-        sourceId: 'newsdata',
-        sourceName: article.source_id || 'News Source',
-        category: article.category?.[0] || 'general',
-        title: article.title,
-        titleAi: this.generateAITitle(article.title),
-        excerpt: article.description || '',
-        tldr: this.generateTLDR(article.content || article.description || ''),
-        tags: article.keywords || this.extractTags(article.title),
-        canonicalUrl: article.link,
-        imageUrl: article.image_url || 'https://via.placeholder.com/800x400?text=No+Image',
-        publishedAt: this.formatPublishDate(article.pubDate),
-        importedAt: new Date().toISOString(),
-        status: 'published' as const,
-        viewCount: 0,
-        trending: false,
-        readTime: this.calculateReadTime(article.content || article.description || ''),
-      }));
   }
 
   /**
@@ -275,59 +344,73 @@ This ensures users can read everything within AvisoNews without leaving the app.
     const seen = new Map<string, Article>();
 
     for (const article of articles) {
-      const normalizedTitle = article.title.toLowerCase().trim();
-      const key = normalizedTitle.substring(0, 50); // Use first 50 chars as key
+      const normalizedTitle = article.title
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .trim();
 
-      if (!seen.has(key)) {
-        seen.set(key, article);
+      if (!seen.has(normalizedTitle)) {
+        seen.set(normalizedTitle, article);
       }
     }
 
-    return Array.from(seen.values());
+    return Array.from(seen.values()).sort((a, b) => {
+      // Sort by trending first, then by view count
+      if (a.trending && !b.trending) return -1;
+      if (!a.trending && b.trending) return 1;
+      return b.viewCount - a.viewCount;
+    });
   }
 
   /**
-   * Infer category from article content
+   * Map subreddit to category
    */
-  private inferCategory(text: string): string {
-    const lowerText = text.toLowerCase();
+  private mapSubredditToCategory(subreddit: string): string {
+    const categoryMap: Record<string, string> = {
+      worldnews: 'world',
+      news: 'world',
+      technology: 'tech',
+      business: 'business',
+      Economics: 'business',
+      science: 'science',
+      EverythingScience: 'science',
+      sports: 'sports',
+      entertainment: 'entertainment',
+      movies: 'entertainment',
+    };
 
-    if (lowerText.match(/\b(tech|technology|software|ai|startup|apple|google|microsoft)\b/))
-      return 'tech';
-    if (lowerText.match(/\b(business|economy|market|stock|finance|company)\b/))
-      return 'business';
-    if (lowerText.match(/\b(health|medical|hospital|doctor|covid|disease)\b/))
-      return 'health';
-    if (lowerText.match(/\b(game|gaming|esports|playstation|xbox)\b/))
-      return 'gaming';
-    if (lowerText.match(/\b(science|research|study|discovery|space|nasa)\b/))
-      return 'science';
-
-    return 'world';
+    return categoryMap[subreddit] || 'general';
   }
 
   /**
    * Generate AI-enhanced title
    */
   private generateAITitle(originalTitle: string): string {
-    // Simplify title by removing source names and cleanup
-    return originalTitle
-      .replace(/\s-\s.*$/, '') // Remove " - Source Name"
-      .replace(/\|.*$/, '') // Remove "| Source Name"
-      .trim();
+    // Simple enhancement - in production, use actual AI
+    return originalTitle.length > 80
+      ? originalTitle.substring(0, 77) + '...'
+      : originalTitle;
   }
 
   /**
-   * Generate TLDR from content
+   * Generate excerpt from content
+   */
+  private generateExcerpt(content: string): string {
+    const cleaned = content.replace(/\n/g, ' ').trim();
+    return cleaned.length > 150
+      ? cleaned.substring(0, 147) + '...'
+      : cleaned;
+  }
+
+  /**
+   * Generate TLDR summary
    */
   private generateTLDR(content: string): string {
-    if (!content) return '';
-
-    // Take first 2 sentences or 150 characters
-    const sentences = content.match(/[^.!?]+[.!?]+/g) || [];
-    const tldr = sentences.slice(0, 2).join(' ').trim();
-
-    return tldr.length > 150 ? tldr.substring(0, 147) + '...' : tldr;
+    // Simple TLDR - in production, use AI summarization
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+    return sentences.length > 0
+      ? sentences[0].trim() + '.'
+      : content.substring(0, 100) + '...';
   }
 
   /**
@@ -335,47 +418,61 @@ This ensures users can read everything within AvisoNews without leaving the app.
    */
   private extractTags(text: string): string[] {
     const commonTags = [
-      'Breaking', 'Analysis', 'Opinion', 'Exclusive', 'Update',
-      'Technology', 'Business', 'Politics', 'Science', 'Health',
-      'Sports', 'Entertainment', 'World', 'Local', 'Featured'
+      'Technology', 'Business', 'Science', 'AI', 'Web Development',
+      'Mobile', 'Security', 'Cloud', 'Data', 'Programming',
     ];
 
-    const lowerText = text.toLowerCase();
-    return commonTags.filter(tag =>
-      lowerText.includes(tag.toLowerCase())
-    ).slice(0, 5);
+    const textLower = text.toLowerCase();
+    const foundTags = commonTags.filter(tag =>
+      textLower.includes(tag.toLowerCase())
+    );
+
+    return foundTags.slice(0, 5);
   }
 
   /**
-   * Format publish date to relative time
+   * Format relative time (e.g., "2h ago", "1d ago")
    */
-  private formatPublishDate(dateString: string): string {
-    try {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
+  private formatRelativeTime(hours: number): string {
+    if (hours < 1) return 'Just now';
+    if (hours < 24) return `${hours}h ago`;
 
-      if (diffMins < 1) return 'Just now';
-      if (diffMins < 60) return `${diffMins} minutes ago`;
-      if (diffHours < 24) return `${diffHours} hours ago`;
-      if (diffDays < 7) return `${diffDays} days ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
 
-      return date.toLocaleDateString();
-    } catch {
-      return 'Recently';
-    }
+    const weeks = Math.floor(days / 7);
+    if (weeks < 4) return `${weeks}w ago`;
+
+    const months = Math.floor(days / 30);
+    return `${months}mo ago`;
   }
 
   /**
    * Calculate estimated read time
    */
   private calculateReadTime(content: string): number {
-    const words = content.split(/\s+/).length;
-    const minutes = Math.ceil(words / 200); // Average reading speed: 200 words/min
-    return Math.max(1, minutes);
+    const wordsPerMinute = 200;
+    const wordCount = content.split(/\s+/).length;
+    return Math.max(Math.ceil(wordCount / wordsPerMinute), 1);
+  }
+
+  /**
+   * Get placeholder image based on category
+   */
+  private getPlaceholderImage(category: string): string {
+    const placeholders: Record<string, string> = {
+      tech: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
+      technology: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
+      world: 'https://images.unsplash.com/photo-1526666923127-b2970f64b422?w=800',
+      worldnews: 'https://images.unsplash.com/photo-1526666923127-b2970f64b422?w=800',
+      news: 'https://images.unsplash.com/photo-1526666923127-b2970f64b422?w=800',
+      business: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800',
+      science: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=800',
+      sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
+      entertainment: 'https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=800',
+    };
+
+    return placeholders[category.toLowerCase()] || placeholders.tech;
   }
 }
 
