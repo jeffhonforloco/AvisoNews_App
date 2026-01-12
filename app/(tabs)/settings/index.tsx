@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
 } from "react-native";
 import {
   Bell,
@@ -18,6 +19,7 @@ import {
   LogOut,
   LucideIcon,
 } from "lucide-react-native";
+import { router } from "expo-router";
 import { usePreferences } from "@/providers/PreferencesProvider";
 
 type SwitchItem = {
@@ -33,6 +35,7 @@ type LinkItem = {
   label: string;
   type: "link";
   value?: string;
+  route?: string;
 };
 
 type SettingItem = SwitchItem | LinkItem;
@@ -80,16 +83,19 @@ export default function SettingsScreen() {
           icon: Info,
           label: "About AvisoNews",
           type: "link" as const,
+          route: "/(tabs)/settings/about",
         },
         {
           icon: Shield,
           label: "Privacy Policy",
           type: "link" as const,
+          route: "/(tabs)/settings/privacy",
         },
         {
           icon: Mail,
           label: "Contact Us",
           type: "link" as const,
+          route: "/(tabs)/settings/contact",
         },
       ],
     },
@@ -97,6 +103,29 @@ export default function SettingsScreen() {
 
   const handleToggle = (key: string, value: boolean) => {
     updatePreference(key as keyof typeof preferences, value);
+  };
+
+  const handleLinkPress = (item: LinkItem) => {
+    if (item.route) {
+      router.push(item.route as any);
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: () => {
+            console.log("User signed out");
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -116,6 +145,8 @@ export default function SettingsScreen() {
                   ]}
                   activeOpacity={item.type === "link" ? 0.7 : 1}
                   disabled={item.type === "switch"}
+                  onPress={() => item.type === "link" && handleLinkPress(item)}
+                  accessibilityLabel={item.label}
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
@@ -147,7 +178,7 @@ export default function SettingsScreen() {
         </View>
       ))}
 
-      <TouchableOpacity style={styles.logoutButton}>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut} accessibilityLabel="Sign out">
         <LogOut size={20} color="#FF3B30" />
         <Text style={styles.logoutText}>Sign Out</Text>
       </TouchableOpacity>
