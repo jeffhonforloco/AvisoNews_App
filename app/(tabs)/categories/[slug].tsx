@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNews } from "@/providers/NewsProvider";
 import ArticleCard from "@/components/ArticleCard";
 import { Article } from "@/types/news";
+import { Analytics } from "@/services/analytics";
 
 const categoryGradients: Record<string, readonly [string, string]> = {
   tech: ["#667EEA", "#764BA2"],
@@ -34,6 +35,12 @@ export default function CategoryDetailScreen() {
   );
 
   const gradient = categoryGradients[slug || "tech"] || ["#667EEA", "#764BA2"];
+
+  useEffect(() => {
+    if (category && categoryArticles) {
+      Analytics.trackCategoryView(category.name, categoryArticles.length);
+    }
+  }, [category, categoryArticles.length]);
 
   const renderArticle = ({ item }: { item: Article }) => (
     <ArticleCard article={item} variant="small" />

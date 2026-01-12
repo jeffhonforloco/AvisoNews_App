@@ -1,0 +1,128 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "done": "Terminé",
+    "back": "Retour",
+    "next": "Suivant",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "retry": "Réessayer",
+    "close": "Fermer"
+  },
+  "tabs": {
+    "home": "Accueil",
+    "categories": "Catégories",
+    "search": "Rechercher",
+    "settings": "Paramètres"
+  },
+  "home": {
+    "title": "AvisoNews",
+    "trending": "Tendances",
+    "latestStories": "Dernières Actualités",
+    "newsletter": {
+      "title": "Restez Informé",
+      "subtitle": "Recevez notre résumé quotidien d'actualités sélectionnées dans votre boîte de réception",
+      "placeholder": "Entrez votre email",
+      "subscribe": "S'abonner",
+      "success": "Vous êtes abonné!",
+      "successMessage": "Vérifiez votre boîte de réception pour notre résumé quotidien"
+    }
+  },
+  "categories": {
+    "title": "Parcourir par Catégorie",
+    "tech": "Technologie",
+    "business": "Business",
+    "world": "Actualités Mondiales",
+    "health": "Santé",
+    "gaming": "Jeux Vidéo",
+    "science": "Science",
+    "articleCount": "{{count}} articles"
+  },
+  "search": {
+    "title": "Rechercher",
+    "placeholder": "Rechercher articles, sujets, tags...",
+    "recentSearches": "Recherches Récentes",
+    "trending": "Sujets Tendance",
+    "noResults": "Aucun article trouvé",
+    "tryDifferent": "Essayez un terme différent"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "account": "Compte",
+    "preferences": "Préférences",
+    "about": "À Propos",
+    "pushNotifications": "Notifications Push",
+    "newsletter": "Newsletter",
+    "darkMode": "Mode Sombre",
+    "language": "Langue",
+    "aboutApp": "À Propos d'AvisoNews",
+    "privacy": "Politique de Confidentialité",
+    "contact": "Contactez-nous",
+    "signOut": "Se Déconnecter",
+    "signIn": "Se Connecter",
+    "version": "Version {{version}}",
+    "signOutConfirm": "Êtes-vous sûr de vouloir vous déconnecter?"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Bon Retour",
+      "subtitle": "Connectez-vous pour continuer à lire",
+      "email": "Email",
+      "password": "Mot de passe",
+      "submit": "Se Connecter",
+      "noAccount": "Pas de compte?",
+      "signUp": "S'inscrire",
+      "forgotPassword": "Mot de passe oublié?"
+    },
+    "signUp": {
+      "title": "Créer un Compte",
+      "subtitle": "Rejoignez AvisoNews aujourd'hui",
+      "name": "Nom",
+      "email": "Email",
+      "password": "Mot de passe",
+      "confirmPassword": "Confirmer le Mot de passe",
+      "submit": "Créer un Compte",
+      "hasAccount": "Vous avez déjà un compte?",
+      "signIn": "Se Connecter",
+      "terms": "En vous inscrivant, vous acceptez nos Conditions d'Utilisation et notre Politique de Confidentialité"
+    },
+    "errors": {
+      "nameRequired": "Le nom est requis",
+      "emailRequired": "L'email est requis",
+      "emailInvalid": "Format d'email invalide",
+      "passwordRequired": "Le mot de passe est requis",
+      "passwordWeak": "Le mot de passe doit contenir au moins 8 caractères",
+      "passwordsMatch": "Les mots de passe ne correspondent pas",
+      "loginFailed": "Échec de la connexion",
+      "signupFailed": "Échec de l'inscription"
+    }
+  },
+  "article": {
+    "readMore": "Lire la suite",
+    "share": "Partager",
+    "bookmark": "Marquer",
+    "removeBookmark": "Retirer le marque-page",
+    "views": "{{count}} vues",
+    "minRead": "{{minutes}} min de lecture",
+    "relatedArticles": "Articles Connexes",
+    "source": "Source",
+    "tags": "Tags"
+  },
+  "offline": {
+    "title": "Pas de connexion Internet",
+    "message": "Certaines fonctionnalités peuvent être limitées",
+    "reconnecting": "Reconnexion...",
+    "queuedActions": "{{count}} actions en attente de synchronisation"
+  },
+  "errors": {
+    "generic": "Quelque chose s'est mal passé",
+    "network": "Erreur réseau",
+    "notFound": "Page non trouvée",
+    "unauthorized": "Accès non autorisé",
+    "tryAgain": "Veuillez réessayer"
+  }
+}

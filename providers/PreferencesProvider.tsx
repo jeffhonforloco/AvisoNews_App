@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Analytics } from "@/services/analytics";
 
 interface Preferences {
   pushNotifications: boolean;
@@ -52,6 +53,7 @@ export const [PreferencesProvider, usePreferences] = createContextHook<Preferenc
     const newPreferences = { ...preferences, [key]: value };
     setPreferences(newPreferences);
     savePreferences(newPreferences);
+    Analytics.trackSettingsChange(key, value);
   };
 
   const resetPreferences = () => {

@@ -17,10 +17,14 @@ import {
   Mail,
   ChevronRight,
   LogOut,
+  User,
+  LogIn,
   LucideIcon,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { usePreferences } from "@/providers/PreferencesProvider";
+import { useAuth } from "@/providers/AuthProvider";
+import { useTheme } from "@/providers/ThemeProvider";
 
 type SwitchItem = {
   icon: LucideIcon;
@@ -41,7 +45,9 @@ type LinkItem = {
 type SettingItem = SwitchItem | LinkItem;
 
 export default function SettingsScreen() {
+  const { theme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
+  const { user, isAuthenticated, signOut } = useAuth();
 
   const settingsSections: { title: string; items: SettingItem[] }[] = [
     {
@@ -120,16 +126,41 @@ export default function SettingsScreen() {
         {
           text: "Sign Out",
           style: "destructive",
-          onPress: () => {
-            console.log("User signed out");
+          onPress: async () => {
+            await signOut();
+            router.replace('/auth/sign-in');
           },
         },
       ]
     );
   };
 
+  const handleSignIn = () => {
+    router.push('/auth/sign-in');
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
+      {/* Account Section */}
+      {isAuthenticated && user ? (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>ACCOUNT</Text>
+          <View style={[styles.sectionContent, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
+            <TouchableOpacity style={styles.settingItem}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
+                  <User size={20} color={theme.primary} />
+                </View>
+                <View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>{user.name}</Text>
+                  <Text style={[styles.emailText, { color: theme.textTertiary }]}>{user.email}</Text>
+                </View>
+              </View>
+              <ChevronRight size={18} color={theme.textQuaternary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
       {settingsSections.map((section, sectionIndex) => (
         <View key={sectionIndex} style={styles.section}>
           <Text style={styles.sectionTitle}>{section.title}</Text>
