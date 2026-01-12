@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import { NewsAPI } from "@/services/api";
+import { Analytics } from "@/services/analytics";
 
 interface BookmarkContextType {
   bookmarks: string[];
@@ -34,15 +35,20 @@ export const [BookmarkProvider, useBookmarks] = createContextHook<BookmarkContex
 
   const toggleBookmark = async (articleId: string): Promise<void> => {
     try {
-      if (bookmarks.includes(articleId)) {
+      const wasBookmarked = bookmarks.includes(articleId);
+
+      if (wasBookmarked) {
         await NewsAPI.removeBookmark(articleId);
         setBookmarks((prev) => prev.filter((id) => id !== articleId));
+        Analytics.trackArticleBookmark(articleId, 'remove');
       } else {
         await NewsAPI.addBookmark(articleId);
         setBookmarks((prev) => [...prev, articleId]);
+        Analytics.trackArticleBookmark(articleId, 'add');
       }
     } catch (error) {
       console.error("Error toggling bookmark:", error);
+      Analytics.trackError(error as Error, 'bookmark_toggle');
       throw error;
     }
   };

@@ -6,7 +6,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NewsProvider } from "@/providers/NewsProvider";
 import { PreferencesProvider } from "@/providers/PreferencesProvider";
 import { BookmarkProvider } from "@/providers/BookmarkProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Analytics } from "@/services/analytics";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,6 +39,11 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
+    // Initialize analytics
+    Analytics.initialize().catch((error) => {
+      console.error('Failed to initialize analytics:', error);
+    });
+
     SplashScreen.hideAsync();
   }, []);
 
@@ -44,13 +51,15 @@ export default function RootLayout() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <PreferencesProvider>
-          <NewsProvider>
-            <BookmarkProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <RootLayoutNav />
-              </GestureHandlerRootView>
-            </BookmarkProvider>
-          </NewsProvider>
+          <ThemeProvider>
+            <NewsProvider>
+              <BookmarkProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <RootLayoutNav />
+                </GestureHandlerRootView>
+              </BookmarkProvider>
+            </NewsProvider>
+          </ThemeProvider>
         </PreferencesProvider>
       </QueryClientProvider>
     </ErrorBoundary>
