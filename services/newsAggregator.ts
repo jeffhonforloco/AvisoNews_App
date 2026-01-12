@@ -45,9 +45,9 @@ interface RedditPost {
     created_utc: number;
     thumbnail: string;
     preview?: {
-      images: Array<{
+      images: {
         source: { url: string };
-      }>;
+      }[];
     };
     subreddit: string;
     ups: number;
@@ -116,29 +116,39 @@ class NewsAggregatorService {
 
   /**
    * Fetch articles from Reddit (free, no auth for public posts)
+   * Note: Reddit API has CORS restrictions on web/mobile, so this may fail silently
    */
   private async fetchFromReddit(subreddit: string, count: number = 20): Promise<Article[]> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(
-        `${this.baseUrls.reddit}/r/${subreddit}/hot.json?limit=${count}`,
+        `${this.baseUrls.reddit}/r/${subreddit}/hot.json?limit=${count}&raw_json=1`,
         {
           headers: {
-            'User-Agent': 'AvisoNews/1.0',
+            'Accept': 'application/json',
           },
+          signal: controller.signal,
         }
       );
 
-      if (!response.ok) throw new Error('Reddit request failed');
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.log(`[NewsAggregator] Reddit r/${subreddit} returned ${response.status}, skipping`);
+        return [];
+      }
 
       const data = await response.json();
-      const posts = data.data.children;
+      const posts = data?.data?.children || [];
 
       return posts
         .filter((post: RedditPost) => !post.data.selftext || post.data.url)
         .map((post: RedditPost) => this.transformRedditPost(post));
-    } catch (error) {
-      console.error('[NewsAggregator] Reddit fetch error:', error);
-      Analytics.trackError(error as Error, 'reddit_fetch');
+    } catch {
+      // Reddit often fails due to CORS/network restrictions - this is expected
+      console.log(`[NewsAggregator] Reddit r/${subreddit} unavailable, using other sources`);
       return [];
     }
   }
@@ -166,6 +176,7 @@ class NewsAggregatorService {
         case 'world':
         case 'news':
           sources = [
+            this.fetchFromHackerNews(15),
             this.fetchFromReddit('worldnews', 15),
             this.fetchFromReddit('news', 15),
           ];
@@ -181,6 +192,7 @@ class NewsAggregatorService {
 
         case 'science':
           sources = [
+            this.fetchFromDevTo(15),
             this.fetchFromReddit('science', 15),
             this.fetchFromReddit('EverythingScience', 10),
           ];
@@ -188,12 +200,14 @@ class NewsAggregatorService {
 
         case 'sports':
           sources = [
+            this.fetchFromHackerNews(10),
             this.fetchFromReddit('sports', 20),
           ];
           break;
 
         case 'entertainment':
           sources = [
+            this.fetchFromHackerNews(10),
             this.fetchFromReddit('entertainment', 15),
             this.fetchFromReddit('movies', 10),
           ];
@@ -241,6 +255,7 @@ class NewsAggregatorService {
 
     return {
       id: `hn-${story.id}`,
+      sourceId: 'hackernews',
       title: story.title,
       titleAi: this.generateAITitle(story.title),
       excerpt: this.generateExcerpt(story.title),
@@ -251,6 +266,8 @@ class NewsAggregatorService {
       category: 'tech',
       tags: this.extractTags(story.title),
       publishedAt: this.formatRelativeTime(diffHours),
+      importedAt: new Date().toISOString(),
+      status: 'published' as const,
       readTime: this.calculateReadTime(story.title),
       viewCount: Math.max(story.score * 10, 100),
       trending: story.score > 100,
@@ -267,6 +284,7 @@ class NewsAggregatorService {
 
     return {
       id: `devto-${article.id}`,
+      sourceId: 'devto',
       title: article.title,
       titleAi: this.generateAITitle(article.title),
       excerpt: article.description || this.generateExcerpt(article.title),
@@ -277,6 +295,8 @@ class NewsAggregatorService {
       category: 'tech',
       tags: article.tag_list.slice(0, 5),
       publishedAt: this.formatRelativeTime(diffHours),
+      importedAt: new Date().toISOString(),
+      status: 'published' as const,
       readTime: article.reading_time_minutes || 5,
       viewCount: article.public_reactions_count * 5,
       trending: article.public_reactions_count > 50,
@@ -301,6 +321,7 @@ class NewsAggregatorService {
 
     return {
       id: `reddit-${post.data.permalink}`,
+      sourceId: 'reddit',
       title: post.data.title,
       titleAi: this.generateAITitle(post.data.title),
       excerpt: post.data.selftext
@@ -313,6 +334,8 @@ class NewsAggregatorService {
       category: this.mapSubredditToCategory(post.data.subreddit),
       tags: this.extractTags(post.data.title),
       publishedAt: this.formatRelativeTime(diffHours),
+      importedAt: new Date().toISOString(),
+      status: 'published' as const,
       readTime: this.calculateReadTime(post.data.selftext || post.data.title),
       viewCount: post.data.ups * 2,
       trending: post.data.ups > 1000,

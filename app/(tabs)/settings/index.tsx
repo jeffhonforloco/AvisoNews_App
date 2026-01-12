@@ -18,7 +18,6 @@ import {
   ChevronRight,
   LogOut,
   User,
-  LogIn,
   LucideIcon,
 } from "lucide-react-native";
 import { router } from "expo-router";
@@ -135,10 +134,6 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleSignIn = () => {
-    router.push('/auth/sign-in');
-  };
-
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
       {/* Account Section */}
@@ -153,7 +148,7 @@ export default function SettingsScreen() {
                 </View>
                 <View>
                   <Text style={[styles.settingLabel, { color: theme.text }]}>{user.name}</Text>
-                  <Text style={[styles.emailText, { color: theme.textTertiary }]}>{user.email}</Text>
+                  <Text style={[styles.userEmail, { color: theme.textTertiary }]}>{user.email}</Text>
                 </View>
               </View>
               <ChevronRight size={18} color={theme.textQuaternary} />
@@ -317,5 +312,10 @@ const styles = StyleSheet.create({
   copyright: {
     fontSize: 12,
     color: "#C7C7CC",
+  },
+  userEmail: {
+    fontSize: 13,
+    color: "#8E8E93",
+    marginTop: 2,
   },
 });

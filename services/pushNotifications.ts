@@ -12,6 +12,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -189,9 +191,9 @@ export const PushNotifications = new PushNotificationServiceImpl();
  */
 export async function scheduleDailyDigest() {
   const trigger: Notifications.DailyTriggerInput = {
+    type: Notifications.SchedulableTriggerInputTypes.DAILY,
     hour: 9, // 9 AM
     minute: 0,
-    repeats: true,
   };
 
   return await PushNotifications.scheduleNotification(
@@ -208,6 +210,6 @@ export async function scheduleBreakingNews(headline: string) {
   return await PushNotifications.scheduleNotification(
     'Breaking News',
     headline,
-    { seconds: 1 } // Immediate
+    { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 1 }
   );
 }

@@ -161,7 +161,7 @@ class OfflineService {
   async isOnline(): Promise<boolean> {
     try {
       const netState = await NetInfo.fetch();
-      return netState.isConnected && (netState.isInternetReachable ?? false);
+      return Boolean(netState.isConnected && netState.isInternetReachable);
     } catch (error) {
       console.error('[Offline] Failed to check online status:', error);
       return false;

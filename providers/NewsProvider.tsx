@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Article, Category } from "@/types/news";
@@ -39,10 +39,10 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
   });
 
-  const updateArticlesMutation = useMutation({
+  const { mutate: updateArticles } = useMutation({
     mutationFn: async (updatedArticles: Article[]) => {
       for (const article of updatedArticles) {
         await NewsAPI.updateArticle(article);
@@ -55,7 +55,7 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
   });
 
   useEffect(() => {
-    if (articlesQuery.data) {
+    if (articlesQuery.data && articlesQuery.data.length > 0) {
       setArticles(articlesQuery.data);
     }
   }, [articlesQuery.data]);
@@ -66,8 +66,8 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
         ? { ...article, viewCount: article.viewCount + 1 }
         : article
     );
-    updateArticlesMutation.mutate(updatedArticles);
-  }, [articles]);
+    updateArticles(updatedArticles);
+  }, [articles, updateArticles]);
 
   return {
     articles,
