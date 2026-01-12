@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,12 +9,14 @@ import {
   Share,
   Platform,
   Animated,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { ArrowLeft, Share2, Bookmark, ExternalLink, Clock } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNews } from "@/providers/NewsProvider";
+import { useBookmarks } from "@/providers/BookmarkProvider";
 import TldrBox from "@/components/TldrBox";
 import AttributionBar from "@/components/AttributionBar";
 import RelatedArticles from "@/components/RelatedArticles";
@@ -22,9 +24,12 @@ import RelatedArticles from "@/components/RelatedArticles";
 export default function ArticleScreen() {
   const { id } = useLocalSearchParams();
   const { articles, incrementViewCount } = useNews();
+  const { isBookmarked, toggleBookmark } = useBookmarks();
   const scrollY = useRef(new Animated.Value(0)).current;
-  
+  const [isTogglingBookmark, setIsTogglingBookmark] = useState(false);
+
   const article = articles.find(a => a.id === id);
+  const bookmarked = article ? isBookmarked(article.id) : false;
 
   useEffect(() => {
     if (article) {
@@ -64,6 +69,20 @@ export default function ArticleScreen() {
     }
   };
 
+  const handleBookmark = async () => {
+    if (!article || isTogglingBookmark) return;
+
+    setIsTogglingBookmark(true);
+    try {
+      await toggleBookmark(article.id);
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      Alert.alert("Error", "Failed to update bookmark. Please try again.");
+    } finally {
+      setIsTogglingBookmark(false);
+    }
+  };
+
   const relatedArticles = articles
     .filter(a => 
       a.id !== article.id && 
@@ -80,14 +99,19 @@ export default function ArticleScreen() {
           style={styles.headerGradient}
         >
           <SafeAreaView edges={["top"]} style={styles.headerContent}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back">
               <ArrowLeft size={24} color="#1C1C1E" />
             </TouchableOpacity>
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.headerAction}>
-                <Bookmark size={22} color="#1C1C1E" />
+              <TouchableOpacity
+                style={styles.headerAction}
+                onPress={handleBookmark}
+                disabled={isTogglingBookmark}
+                accessibilityLabel={bookmarked ? "Remove bookmark" : "Add bookmark"}
+              >
+                <Bookmark size={22} color="#1C1C1E" fill={bookmarked ? "#1C1C1E" : "none"} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.headerAction} onPress={handleShare}>
+              <TouchableOpacity style={styles.headerAction} onPress={handleShare} accessibilityLabel="Share article">
                 <Share2 size={22} color="#1C1C1E" />
               </TouchableOpacity>
             </View>
@@ -174,18 +198,23 @@ export default function ArticleScreen() {
       </Animated.ScrollView>
 
       <SafeAreaView edges={["top"]} style={styles.floatingHeader}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.floatingBackButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.floatingBackButton} accessibilityLabel="Go back">
           <View style={styles.floatingButtonBg}>
             <ArrowLeft size={22} color="#1C1C1E" />
           </View>
         </TouchableOpacity>
         <View style={styles.floatingActions}>
-          <TouchableOpacity style={styles.floatingAction}>
+          <TouchableOpacity
+            style={styles.floatingAction}
+            onPress={handleBookmark}
+            disabled={isTogglingBookmark}
+            accessibilityLabel={bookmarked ? "Remove bookmark" : "Add bookmark"}
+          >
             <View style={styles.floatingButtonBg}>
-              <Bookmark size={20} color="#1C1C1E" />
+              <Bookmark size={20} color="#1C1C1E" fill={bookmarked ? "#1C1C1E" : "none"} />
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.floatingAction} onPress={handleShare}>
+          <TouchableOpacity style={styles.floatingAction} onPress={handleShare} accessibilityLabel="Share article">
             <View style={styles.floatingButtonBg}>
               <Share2 size={20} color="#1C1C1E" />
             </View>

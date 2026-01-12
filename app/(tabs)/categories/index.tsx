@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { ChevronRight, Cpu, DollarSign, Globe, Heart, Gamepad2, Microscope } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 
 const categories = [
   {
@@ -62,7 +63,7 @@ const categories = [
 
 export default function CategoriesScreen() {
   const handleCategoryPress = (categoryId: string) => {
-    console.log("Navigate to category:", categoryId);
+    router.push(`/(tabs)/categories/${categoryId}`);
   };
 
   return (

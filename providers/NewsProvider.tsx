@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Article, Category } from "@/types/news";
-import { mockArticles } from "@/mocks/articles";
+import { NewsAPI } from "@/services/api";
 
 interface NewsContextType {
   articles: Article[];
@@ -19,41 +18,19 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem("categories");
-      if (stored) return JSON.parse(stored);
-      
-      const defaultCategories: Category[] = [
-        { id: "tech", name: "Technology", slug: "tech" },
-        { id: "business", name: "Business", slug: "business" },
-        { id: "world", name: "World", slug: "world" },
-        { id: "health", name: "Health", slug: "health" },
-        { id: "gaming", name: "Gaming", slug: "gaming" },
-        { id: "science", name: "Science", slug: "science" },
-      ];
-      
-      await AsyncStorage.setItem("categories", JSON.stringify(defaultCategories));
-      return defaultCategories;
-    },
+    queryFn: () => NewsAPI.getCategories(),
   });
 
   const articlesQuery = useQuery({
     queryKey: ["articles"],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem("articles");
-      if (stored) {
-        const parsedArticles = JSON.parse(stored);
-        if (parsedArticles.length > 0) return parsedArticles;
-      }
-      
-      await AsyncStorage.setItem("articles", JSON.stringify(mockArticles));
-      return mockArticles;
-    },
+    queryFn: () => NewsAPI.getArticles(),
   });
 
   const updateArticlesMutation = useMutation({
     mutationFn: async (updatedArticles: Article[]) => {
-      await AsyncStorage.setItem("articles", JSON.stringify(updatedArticles));
+      for (const article of updatedArticles) {
+        await NewsAPI.updateArticle(article);
+      }
       return updatedArticles;
     },
     onSuccess: (data) => {

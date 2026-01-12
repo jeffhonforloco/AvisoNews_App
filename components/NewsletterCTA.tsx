@@ -7,18 +7,53 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
-import { Mail } from "lucide-react-native";
+import { Mail, AlertCircle } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { NewsAPI } from "@/services/api";
 
 export default function NewsletterCTA() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubscribe = () => {
-    if (email && email.includes("@")) {
-      setSubscribed(true);
-      console.log("Subscribe email:", email);
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  };
+
+  const handleSubscribe = async () => {
+    setError("");
+
+    if (!email.trim()) {
+      setError("Please enter your email address");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const result = await NewsAPI.subscribeNewsletter(email.trim());
+
+      if (result.success) {
+        setSubscribed(true);
+        setEmail("");
+      } else {
+        setError(result.message || "Subscription failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Newsletter subscription error:", error);
+      setError("An error occurred. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -63,19 +98,39 @@ export default function NewsletterCTA() {
           </Text>
           <View style={styles.inputContainer}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, error && styles.inputError]}
               placeholder="Enter your email"
               placeholderTextColor="rgba(255, 255, 255, 0.6)"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setError("");
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!isSubmitting}
+              accessibilityLabel="Email input"
             />
-            <TouchableOpacity style={styles.button} onPress={handleSubscribe}>
-              <Text style={styles.buttonText}>Subscribe</Text>
+            <TouchableOpacity
+              style={[styles.button, isSubmitting && styles.buttonDisabled]}
+              onPress={handleSubscribe}
+              disabled={isSubmitting}
+              accessibilityLabel="Subscribe to newsletter"
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FF6B6B" />
+              ) : (
+                <Text style={styles.buttonText}>Subscribe</Text>
+              )}
             </TouchableOpacity>
           </View>
+          {error ? (
+            <View style={styles.errorContainer}>
+              <AlertCircle size={16} color="#FFFFFF" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
         </View>
       </LinearGradient>
     </KeyboardAvoidingView>
@@ -136,11 +191,20 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     marginRight: 8,
   },
+  inputError: {
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.8)",
+  },
   button: {
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 24,
     borderRadius: 12,
     justifyContent: "center",
+    minWidth: 100,
+    alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     fontSize: 16,
@@ -160,5 +224,15 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 15,
     color: "rgba(255, 255, 255, 0.9)",
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    marginLeft: 6,
   },
 });

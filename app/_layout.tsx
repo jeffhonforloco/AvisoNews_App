@@ -5,6 +5,8 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NewsProvider } from "@/providers/NewsProvider";
 import { PreferencesProvider } from "@/providers/PreferencesProvider";
+import { BookmarkProvider } from "@/providers/BookmarkProvider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,14 +41,18 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <PreferencesProvider>
-        <NewsProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <RootLayoutNav />
-          </GestureHandlerRootView>
-        </NewsProvider>
-      </PreferencesProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <PreferencesProvider>
+          <NewsProvider>
+            <BookmarkProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </BookmarkProvider>
+          </NewsProvider>
+        </PreferencesProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
