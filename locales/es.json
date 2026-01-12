@@ -1,0 +1,128 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "done": "Hecho",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "retry": "Reintentar",
+    "close": "Cerrar"
+  },
+  "tabs": {
+    "home": "Inicio",
+    "categories": "Categorías",
+    "search": "Buscar",
+    "settings": "Ajustes"
+  },
+  "home": {
+    "title": "AvisoNews",
+    "trending": "Tendencias",
+    "latestStories": "Últimas Historias",
+    "newsletter": {
+      "title": "Mantente Informado",
+      "subtitle": "Recibe nuestro resumen diario de noticias seleccionadas en tu bandeja de entrada",
+      "placeholder": "Ingresa tu correo",
+      "subscribe": "Suscribirse",
+      "success": "¡Estás suscrito!",
+      "successMessage": "Revisa tu bandeja de entrada para nuestro resumen diario"
+    }
+  },
+  "categories": {
+    "title": "Explorar por Categoría",
+    "tech": "Tecnología",
+    "business": "Negocios",
+    "world": "Noticias del Mundo",
+    "health": "Salud",
+    "gaming": "Juegos",
+    "science": "Ciencia",
+    "articleCount": "{{count}} artículos"
+  },
+  "search": {
+    "title": "Buscar",
+    "placeholder": "Buscar artículos, temas, etiquetas...",
+    "recentSearches": "Búsquedas Recientes",
+    "trending": "Temas Populares",
+    "noResults": "No se encontraron artículos",
+    "tryDifferent": "Intenta con un término diferente"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "account": "Cuenta",
+    "preferences": "Preferencias",
+    "about": "Acerca de",
+    "pushNotifications": "Notificaciones Push",
+    "newsletter": "Boletín",
+    "darkMode": "Modo Oscuro",
+    "language": "Idioma",
+    "aboutApp": "Acerca de AvisoNews",
+    "privacy": "Política de Privacidad",
+    "contact": "Contáctanos",
+    "signOut": "Cerrar Sesión",
+    "signIn": "Iniciar Sesión",
+    "version": "Versión {{version}}",
+    "signOutConfirm": "¿Estás seguro que deseas cerrar sesión?"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Bienvenido de Nuevo",
+      "subtitle": "Inicia sesión para continuar leyendo",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "submit": "Iniciar Sesión",
+      "noAccount": "¿No tienes cuenta?",
+      "signUp": "Regístrate",
+      "forgotPassword": "¿Olvidaste tu contraseña?"
+    },
+    "signUp": {
+      "title": "Crear Cuenta",
+      "subtitle": "Únete a AvisoNews hoy",
+      "name": "Nombre",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar Contraseña",
+      "submit": "Crear Cuenta",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "signIn": "Iniciar Sesión",
+      "terms": "Al registrarte, aceptas nuestros Términos de Servicio y Política de Privacidad"
+    },
+    "errors": {
+      "nameRequired": "El nombre es requerido",
+      "emailRequired": "El correo es requerido",
+      "emailInvalid": "Formato de correo inválido",
+      "passwordRequired": "La contraseña es requerida",
+      "passwordWeak": "La contraseña debe tener al menos 8 caracteres",
+      "passwordsMatch": "Las contraseñas no coinciden",
+      "loginFailed": "Error al iniciar sesión",
+      "signupFailed": "Error al registrarse"
+    }
+  },
+  "article": {
+    "readMore": "Leer más",
+    "share": "Compartir",
+    "bookmark": "Guardar",
+    "removeBookmark": "Quitar guardado",
+    "views": "{{count}} vistas",
+    "minRead": "{{minutes}} min de lectura",
+    "relatedArticles": "Artículos Relacionados",
+    "source": "Fuente",
+    "tags": "Etiquetas"
+  },
+  "offline": {
+    "title": "Sin conexión a internet",
+    "message": "Algunas funciones pueden estar limitadas",
+    "reconnecting": "Reconectando...",
+    "queuedActions": "{{count}} acciones en cola para sincronizar"
+  },
+  "errors": {
+    "generic": "Algo salió mal",
+    "network": "Error de red",
+    "notFound": "Página no encontrada",
+    "unauthorized": "Acceso no autorizado",
+    "tryAgain": "Por favor intenta de nuevo"
+  }
+}

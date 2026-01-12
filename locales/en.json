@@ -1,0 +1,128 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "done": "Done",
+    "back": "Back",
+    "next": "Next",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "retry": "Retry",
+    "close": "Close"
+  },
+  "tabs": {
+    "home": "Home",
+    "categories": "Categories",
+    "search": "Search",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "AvisoNews",
+    "trending": "Trending Now",
+    "latestStories": "Latest Stories",
+    "newsletter": {
+      "title": "Stay Informed",
+      "subtitle": "Get our daily digest of curated news delivered to your inbox",
+      "placeholder": "Enter your email",
+      "subscribe": "Subscribe",
+      "success": "You're subscribed!",
+      "successMessage": "Check your inbox for our daily digest"
+    }
+  },
+  "categories": {
+    "title": "Browse by Category",
+    "tech": "Technology",
+    "business": "Business",
+    "world": "World News",
+    "health": "Health",
+    "gaming": "Gaming",
+    "science": "Science",
+    "articleCount": "{{count}} articles"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search articles, topics, tags...",
+    "recentSearches": "Recent Searches",
+    "trending": "Trending Topics",
+    "noResults": "No articles found",
+    "tryDifferent": "Try a different search term"
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "preferences": "Preferences",
+    "about": "About",
+    "pushNotifications": "Push Notifications",
+    "newsletter": "Newsletter",
+    "darkMode": "Dark Mode",
+    "language": "Language",
+    "aboutApp": "About AvisoNews",
+    "privacy": "Privacy Policy",
+    "contact": "Contact Us",
+    "signOut": "Sign Out",
+    "signIn": "Sign In",
+    "version": "Version {{version}}",
+    "signOutConfirm": "Are you sure you want to sign out?"
+  },
+  "auth": {
+    "signIn": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to continue reading",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign In",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign Up",
+      "forgotPassword": "Forgot Password?"
+    },
+    "signUp": {
+      "title": "Create Account",
+      "subtitle": "Join AvisoNews today",
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submit": "Create Account",
+      "hasAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "terms": "By signing up, you agree to our Terms of Service and Privacy Policy"
+    },
+    "errors": {
+      "nameRequired": "Name is required",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email format",
+      "passwordRequired": "Password is required",
+      "passwordWeak": "Password must be at least 8 characters",
+      "passwordsMatch": "Passwords do not match",
+      "loginFailed": "Sign in failed",
+      "signupFailed": "Sign up failed"
+    }
+  },
+  "article": {
+    "readMore": "Read more",
+    "share": "Share",
+    "bookmark": "Bookmark",
+    "removeBookmark": "Remove bookmark",
+    "views": "{{count}} views",
+    "minRead": "{{minutes}} min read",
+    "relatedArticles": "Related Articles",
+    "source": "Source",
+    "tags": "Tags"
+  },
+  "offline": {
+    "title": "No internet connection",
+    "message": "Some features may be limited",
+    "reconnecting": "Reconnecting...",
+    "queuedActions": "{{count}} actions queued for sync"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error occurred",
+    "notFound": "Page not found",
+    "unauthorized": "Unauthorized access",
+    "tryAgain": "Please try again"
+  }
+}
