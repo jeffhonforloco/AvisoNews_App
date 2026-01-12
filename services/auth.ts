@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeStorage } from '@/services/safeStorage';
 import { Analytics } from './analytics';
 
 const AUTH_TOKEN_KEY = 'auth_token';
@@ -165,7 +165,7 @@ class AuthService {
    */
   async signOut(): Promise<void> {
     try {
-      await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
+      await SafeStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
       Analytics.reset();
       console.log('[Auth] User signed out');
     } catch (error) {
@@ -179,7 +179,7 @@ class AuthService {
    */
   async getToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      return await SafeStorage.getItem(AUTH_TOKEN_KEY);
     } catch (error) {
       console.error('[Auth] Get token error:', error);
       return null;
@@ -191,7 +191,7 @@ class AuthService {
    */
   async getUser(): Promise<User | null> {
     try {
-      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+      const userData = await SafeStorage.getItem(USER_DATA_KEY);
       return userData ? JSON.parse(userData) : null;
     } catch (error) {
       console.error('[Auth] Get user error:', error);
@@ -226,14 +226,14 @@ class AuthService {
         }
 
         const result = await response.json();
-        await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(result.user));
+        await SafeStorage.setItem(USER_DATA_KEY, JSON.stringify(result.user));
 
         return { success: true, user: result.user };
       }
 
       // Mock update for development
       const updatedUser = { ...currentUser, ...updates };
-      await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedUser));
+      await SafeStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedUser));
 
       return { success: true, user: updatedUser };
     } catch (error) {
@@ -264,7 +264,7 @@ class AuthService {
    */
   private async saveSession(token: string, user: User): Promise<void> {
     try {
-      await AsyncStorage.multiSet([
+      await SafeStorage.multiSet([
         [AUTH_TOKEN_KEY, token],
         [USER_DATA_KEY, JSON.stringify(user)],
       ]);

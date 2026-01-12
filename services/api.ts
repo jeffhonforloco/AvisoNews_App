@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeStorage } from "@/services/safeStorage";
 import { Article, Category } from "@/types/news";
 import { mockArticles } from "@/mocks/articles";
 
@@ -19,13 +19,13 @@ export class NewsAPI {
         return await response.json();
       }
 
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.ARTICLES);
+      const stored = await SafeStorage.getItem(STORAGE_KEYS.ARTICLES);
       if (stored) {
         const parsedArticles = JSON.parse(stored);
         if (parsedArticles.length > 0) return parsedArticles;
       }
 
-      await AsyncStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(mockArticles));
+      await SafeStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(mockArticles));
       return mockArticles;
     } catch (error) {
       console.error("Error fetching articles:", error);
@@ -41,7 +41,7 @@ export class NewsAPI {
         return await response.json();
       }
 
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      const stored = await SafeStorage.getItem(STORAGE_KEYS.CATEGORIES);
       if (stored) return JSON.parse(stored);
 
       const defaultCategories: Category[] = [
@@ -53,7 +53,7 @@ export class NewsAPI {
         { id: "science", name: "Science", slug: "science" },
       ];
 
-      await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(defaultCategories));
+      await SafeStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(defaultCategories));
       return defaultCategories;
     } catch (error) {
       console.error("Error fetching categories:", error);
@@ -99,7 +99,7 @@ export class NewsAPI {
       const updatedArticles = articles.map((a) =>
         a.id === article.id ? article : a
       );
-      await AsyncStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(updatedArticles));
+      await SafeStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(updatedArticles));
     } catch (error) {
       console.error("Error updating article:", error);
       throw error;
@@ -112,7 +112,7 @@ export class NewsAPI {
       const updatedArticles = articles.map((a) =>
         a.id === articleId ? { ...a, viewCount: a.viewCount + 1 } : a
       );
-      await AsyncStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(updatedArticles));
+      await SafeStorage.setItem(STORAGE_KEYS.ARTICLES, JSON.stringify(updatedArticles));
     } catch (error) {
       console.error("Error incrementing view count:", error);
     }
@@ -120,7 +120,7 @@ export class NewsAPI {
 
   static async getBookmarks(): Promise<string[]> {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.BOOKMARKS);
+      const stored = await SafeStorage.getItem(STORAGE_KEYS.BOOKMARKS);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
       console.error("Error fetching bookmarks:", error);
@@ -133,7 +133,7 @@ export class NewsAPI {
       const bookmarks = await this.getBookmarks();
       if (!bookmarks.includes(articleId)) {
         bookmarks.push(articleId);
-        await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(bookmarks));
+        await SafeStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(bookmarks));
       }
     } catch (error) {
       console.error("Error adding bookmark:", error);
@@ -145,7 +145,7 @@ export class NewsAPI {
     try {
       const bookmarks = await this.getBookmarks();
       const filtered = bookmarks.filter((id) => id !== articleId);
-      await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(filtered));
+      await SafeStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(filtered));
     } catch (error) {
       console.error("Error removing bookmark:", error);
       throw error;

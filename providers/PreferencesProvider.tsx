@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import createContextHook from "@nkzw/create-context-hook";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeStorage } from "@/services/safeStorage";
 import { Analytics } from "@/services/analytics";
 
 interface Preferences {
@@ -32,7 +32,7 @@ export const [PreferencesProvider, usePreferences] = createContextHook<Preferenc
 
   const loadPreferences = async () => {
     try {
-      const stored = await AsyncStorage.getItem("preferences");
+      const stored = await SafeStorage.getItem("preferences");
       if (stored) {
         setPreferences(JSON.parse(stored));
       }
@@ -43,7 +43,7 @@ export const [PreferencesProvider, usePreferences] = createContextHook<Preferenc
 
   const savePreferences = async (newPreferences: Preferences) => {
     try {
-      await AsyncStorage.setItem("preferences", JSON.stringify(newPreferences));
+      await SafeStorage.setItem("preferences", JSON.stringify(newPreferences));
     } catch (error) {
       console.error("Error saving preferences:", error);
     }

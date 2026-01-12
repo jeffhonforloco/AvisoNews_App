@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeStorage } from '@/services/safeStorage';
 import NetInfo from '@react-native-community/netinfo';
 
 const OFFLINE_QUEUE_KEY = 'offline_queue';
@@ -20,7 +20,7 @@ class OfflineService {
    */
   async initialize() {
     try {
-      const stored = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+      const stored = await SafeStorage.getItem(OFFLINE_QUEUE_KEY);
       if (stored) {
         this.queue = JSON.parse(stored);
       }
@@ -83,7 +83,7 @@ class OfflineService {
       }
 
       // Update last sync timestamp
-      await AsyncStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+      await SafeStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
     } catch (error) {
       console.error('[Offline] Failed to process queue:', error);
     } finally {
@@ -118,7 +118,7 @@ class OfflineService {
    */
   private async saveQueue(): Promise<void> {
     try {
-      await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(this.queue));
+      await SafeStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(this.queue));
     } catch (error) {
       console.error('[Offline] Failed to save queue:', error);
     }
@@ -129,7 +129,7 @@ class OfflineService {
    */
   async clearQueue(): Promise<void> {
     this.queue = [];
-    await AsyncStorage.removeItem(OFFLINE_QUEUE_KEY);
+    await SafeStorage.removeItem(OFFLINE_QUEUE_KEY);
   }
 
   /**
@@ -147,7 +147,7 @@ class OfflineService {
    */
   async getLastSync(): Promise<number | null> {
     try {
-      const timestamp = await AsyncStorage.getItem(LAST_SYNC_KEY);
+      const timestamp = await SafeStorage.getItem(LAST_SYNC_KEY);
       return timestamp ? parseInt(timestamp, 10) : null;
     } catch (error) {
       console.error('[Offline] Failed to get last sync:', error);

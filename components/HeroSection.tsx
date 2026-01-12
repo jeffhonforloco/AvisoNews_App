@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -27,10 +27,18 @@ export default function HeroSection({ articles }: HeroSectionProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const activeIndexRef = useRef(activeIndex);
 
   useEffect(() => {
+    activeIndexRef.current = activeIndex;
+  }, [activeIndex]);
+
+  useEffect(() => {
+    if (articles.length <= 1) return;
+
     const interval = setInterval(() => {
-      const nextIndex = (activeIndex + 1) % articles.length;
+      const currentIndex = activeIndexRef.current;
+      const nextIndex = (currentIndex + 1) % articles.length;
       scrollViewRef.current?.scrollTo({
         x: nextIndex * screenWidth,
         animated: true,
@@ -38,15 +46,15 @@ export default function HeroSection({ articles }: HeroSectionProps) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeIndex, articles.length]);
+  }, [articles.length]);
 
-  const handleScroll = (event: any) => {
+  const handleScroll = useCallback((event: any) => {
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
-    if (slideIndex !== activeIndex) {
+    if (slideIndex >= 0 && slideIndex < articles.length && slideIndex !== activeIndexRef.current) {
       setActiveIndex(slideIndex);
       Haptics.selectionAsync();
     }
-  };
+  }, [articles.length]);
 
   const handlePress = (articleId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
