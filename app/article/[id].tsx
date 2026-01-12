@@ -3,21 +3,19 @@ import {
   StyleSheet,
   Text,
   View,
-  ScrollView,
   TouchableOpacity,
   Image,
   Share,
-  Platform,
   Animated,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
-import { ArrowLeft, Share2, Bookmark, Clock } from "lucide-react-native";
+import { ArrowLeft, Share2, Bookmark, Clock, ExternalLink } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNews } from "@/providers/NewsProvider";
 import { useBookmarks } from "@/providers/BookmarkProvider";
-import { NewsAggregator } from "@/services/newsAggregator";
+import * as Linking from "expo-linking";
 import TldrBox from "@/components/TldrBox";
 import AttributionBar from "@/components/AttributionBar";
 import RelatedArticles from "@/components/RelatedArticles";
@@ -28,8 +26,6 @@ export default function ArticleScreen() {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [isTogglingBookmark, setIsTogglingBookmark] = useState(false);
-  const [articleContent, setArticleContent] = useState<string>("");
-  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
   const article = articles.find(a => a.id === id);
   const bookmarked = article ? isBookmarked(article.id) : false;
@@ -38,27 +34,13 @@ export default function ArticleScreen() {
     if (article) {
       incrementViewCount(article.id);
     }
-  }, [article?.id]);
+  }, [article, incrementViewCount]);
 
-  useEffect(() => {
-    const fetchContent = async () => {
-      if (article?.canonicalUrl && !articleContent) {
-        setIsLoadingContent(true);
-        try {
-          const content = await NewsAggregator.fetchArticleContent(article.canonicalUrl);
-          setArticleContent(content);
-        } catch (error) {
-          console.error("Error fetching article content:", error);
-          // Fallback to excerpt if content fetch fails
-          setArticleContent(article.excerpt);
-        } finally {
-          setIsLoadingContent(false);
-        }
-      }
-    };
-
-    fetchContent();
-  }, [article?.canonicalUrl]);
+  const handleReadFullArticle = () => {
+    if (article?.canonicalUrl) {
+      Linking.openURL(article.canonicalUrl);
+    }
+  };
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 200],
@@ -181,23 +163,18 @@ export default function ArticleScreen() {
 
           <Text style={styles.excerpt}>{article.excerpt}</Text>
 
-          <View style={styles.articleContent}>
-            {isLoadingContent ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading full article...</Text>
-              </View>
-            ) : articleContent ? (
-              articleContent.split('\n\n').map((paragraph, index) => (
-                <Text key={index} style={styles.paragraph}>
-                  {paragraph.trim()}
-                </Text>
-              ))
-            ) : (
-              <Text style={styles.paragraph}>
-                {article.excerpt}
-              </Text>
-            )}
-          </View>
+          <TouchableOpacity
+            style={styles.readFullButton}
+            onPress={handleReadFullArticle}
+            activeOpacity={0.8}
+          >
+            <ExternalLink size={18} color="#FFFFFF" />
+            <Text style={styles.readFullButtonText}>Read Full Article</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.sourceHint}>
+            Opens {article.sourceName} in your browser
+          </Text>
 
           {article.tags && article.tags.length > 0 && (
             <View style={styles.tagsContainer}>
@@ -423,16 +400,33 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     letterSpacing: -0.1,
   },
-  loadingContainer: {
-    paddingVertical: 48,
+  readFullButton: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#1C1C1E",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    gap: 10,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  loadingText: {
-    fontSize: 15,
+  readFullButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
+  },
+  sourceHint: {
+    fontSize: 13,
     color: "#8E8E93",
-    fontStyle: "italic",
-    fontWeight: "500",
+    textAlign: "center",
+    marginBottom: 28,
   },
   tagsContainer: {
     flexDirection: "row",
