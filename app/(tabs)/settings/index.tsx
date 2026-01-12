@@ -19,26 +19,32 @@ import {
   LogOut,
   User,
   LucideIcon,
+  Sparkles,
 } from "lucide-react-native";
 import { router } from "expo-router";
 import { usePreferences } from "@/providers/PreferencesProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
+import * as Haptics from "expo-haptics";
 
 type SwitchItem = {
   icon: LucideIcon;
   label: string;
+  description?: string;
   type: "switch";
   key: string;
   value: boolean;
+  color: string;
 };
 
 type LinkItem = {
   icon: LucideIcon;
   label: string;
+  description?: string;
   type: "link";
   value?: string;
   route?: string;
+  color: string;
 };
 
 type SettingItem = SwitchItem | LinkItem;
@@ -55,29 +61,36 @@ export default function SettingsScreen() {
         {
           icon: Bell,
           label: "Push Notifications",
+          description: "Get notified about breaking news",
           type: "switch" as const,
           key: "pushNotifications",
           value: preferences.pushNotifications,
+          color: "#FF3B30",
         },
         {
           icon: Mail,
           label: "Newsletter",
+          description: "Daily digest in your inbox",
           type: "switch" as const,
           key: "newsletter",
           value: preferences.newsletter,
+          color: "#007AFF",
         },
         {
           icon: Moon,
           label: "Dark Mode",
+          description: "Reduce eye strain at night",
           type: "switch" as const,
           key: "darkMode",
           value: preferences.darkMode,
+          color: "#5856D6",
         },
         {
           icon: Globe,
           label: "Language",
           type: "link" as const,
           value: "English",
+          color: "#34C759",
         },
       ],
     },
@@ -89,34 +102,40 @@ export default function SettingsScreen() {
           label: "About AvisoNews",
           type: "link" as const,
           route: "/(tabs)/settings/about",
+          color: "#FF9500",
         },
         {
           icon: Shield,
           label: "Privacy Policy",
           type: "link" as const,
           route: "/(tabs)/settings/privacy",
+          color: "#00C7BE",
         },
         {
           icon: Mail,
           label: "Contact Us",
           type: "link" as const,
           route: "/(tabs)/settings/contact",
+          color: "#FF2D55",
         },
       ],
     },
   ];
 
   const handleToggle = (key: string, value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     updatePreference(key as keyof typeof preferences, value);
   };
 
   const handleLinkPress = (item: LinkItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (item.route) {
       router.push(item.route as any);
     }
   };
 
   const handleSignOut = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       "Sign Out",
       "Are you sure you want to sign out?",
@@ -135,65 +154,82 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
-      {/* Account Section */}
-      {isAuthenticated && user ? (
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.background }]} 
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
+        <Text style={[styles.headerSubtitle, { color: theme.textTertiary }]}>
+          Customize your experience
+        </Text>
+      </View>
+
+      {isAuthenticated && user && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>ACCOUNT</Text>
-          <View style={[styles.sectionContent, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
-            <TouchableOpacity style={styles.settingItem}>
-              <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
-                  <User size={20} color={theme.primary} />
-                </View>
-                <View>
-                  <Text style={[styles.settingLabel, { color: theme.text }]}>{user.name}</Text>
-                  <Text style={[styles.userEmail, { color: theme.textTertiary }]}>{user.email}</Text>
-                </View>
-              </View>
-              <ChevronRight size={18} color={theme.textQuaternary} />
-            </TouchableOpacity>
+          <View style={[styles.accountCard, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
+            <View style={[styles.avatarContainer, { backgroundColor: theme.primary + "20" }]}>
+              <User size={28} color={theme.primary} />
+            </View>
+            <View style={styles.accountInfo}>
+              <Text style={[styles.accountName, { color: theme.text }]}>{user.name}</Text>
+              <Text style={[styles.accountEmail, { color: theme.textTertiary }]}>{user.email}</Text>
+            </View>
+            <View style={[styles.proBadge, { backgroundColor: theme.primary }]}>
+              <Sparkles size={12} color="#FFFFFF" />
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
           </View>
         </View>
-      ) : null}
+      )}
+
       {settingsSections.map((section, sectionIndex) => (
         <View key={sectionIndex} style={styles.section}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <View style={styles.sectionContent}>
+          <Text style={[styles.sectionTitle, { color: theme.textTertiary }]}>{section.title}</Text>
+          <View style={[styles.sectionContent, { backgroundColor: theme.cardBackground, borderColor: theme.cardBorder }]}>
             {section.items.map((item, itemIndex) => {
               const Icon = item.icon;
+              const isLast = itemIndex === section.items.length - 1;
               return (
                 <TouchableOpacity
                   key={itemIndex}
                   style={[
                     styles.settingItem,
-                    itemIndex === section.items.length - 1 && styles.lastItem,
+                    !isLast && { borderBottomWidth: 1, borderBottomColor: theme.border },
                   ]}
                   activeOpacity={item.type === "link" ? 0.7 : 1}
                   disabled={item.type === "switch"}
                   onPress={() => item.type === "link" && handleLinkPress(item)}
-                  accessibilityLabel={item.label}
                 >
                   <View style={styles.settingLeft}>
-                    <View style={styles.iconContainer}>
-                      <Icon size={20} color="#FF6B6B" />
+                    <View style={[styles.iconContainer, { backgroundColor: item.color + "15" }]}>
+                      <Icon size={20} color={item.color} />
                     </View>
-                    <Text style={styles.settingLabel}>{item.label}</Text>
+                    <View style={styles.labelContainer}>
+                      <Text style={[styles.settingLabel, { color: theme.text }]}>{item.label}</Text>
+                      {item.description && (
+                        <Text style={[styles.settingDescription, { color: theme.textTertiary }]}>
+                          {item.description}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                   <View style={styles.settingRight}>
                     {item.type === "switch" ? (
                       <Switch
                         value={item.value}
                         onValueChange={(value) => handleToggle(item.key, value)}
-                        trackColor={{ false: "#E5E5EA", true: "#FF6B6B" }}
+                        trackColor={{ false: theme.border, true: theme.primary }}
                         thumbColor="#FFFFFF"
+                        ios_backgroundColor={theme.border}
                       />
                     ) : (
                       <View style={styles.linkRight}>
                         {item.value && (
-                          <Text style={styles.linkValue}>{item.value}</Text>
+                          <Text style={[styles.linkValue, { color: theme.textTertiary }]}>{item.value}</Text>
                         )}
-                        <ChevronRight size={18} color="#C7C7CC" />
+                        <ChevronRight size={18} color={theme.textQuaternary} />
                       </View>
                     )}
                   </View>
@@ -204,14 +240,19 @@ export default function SettingsScreen() {
         </View>
       ))}
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut} accessibilityLabel="Sign out">
-        <LogOut size={20} color="#FF3B30" />
-        <Text style={styles.logoutText}>Sign Out</Text>
+      <TouchableOpacity 
+        style={[styles.signOutButton, { borderColor: theme.error }]} 
+        onPress={handleSignOut}
+        activeOpacity={0.7}
+      >
+        <LogOut size={20} color={theme.error} />
+        <Text style={[styles.signOutText, { color: theme.error }]}>Sign Out</Text>
       </TouchableOpacity>
 
       <View style={styles.footer}>
-        <Text style={styles.version}>Version 1.0.0</Text>
-        <Text style={styles.copyright}>© 2025 AvisoNews</Text>
+        <View style={[styles.footerDivider, { backgroundColor: theme.border }]} />
+        <Text style={[styles.version, { color: theme.textTertiary }]}>Version 1.0.0</Text>
+        <Text style={[styles.copyright, { color: theme.textQuaternary }]}>© 2025 AvisoNews</Text>
       </View>
     </ScrollView>
   );
@@ -220,36 +261,90 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F2F2F7",
+  },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 34,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    fontWeight: "500",
   },
   section: {
-    marginTop: 20,
+    marginTop: 24,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#8E8E93",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
     marginLeft: 20,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   sectionContent: {
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "#E5E5EA",
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  accountCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  avatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  accountInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  accountName: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  accountEmail: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  proBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  proBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    marginLeft: 4,
+    letterSpacing: 0.5,
   },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
-  },
-  lastItem: {
-    borderBottomWidth: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   settingLeft: {
     flexDirection: "row",
@@ -257,17 +352,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: "#FFF5F5",
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 14,
+  },
+  labelContainer: {
+    flex: 1,
   },
   settingLabel: {
     fontSize: 16,
-    color: "#1C1C1E",
+    fontWeight: "600",
+  },
+  settingDescription: {
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: "500",
   },
   settingRight: {
     flexDirection: "row",
@@ -279,43 +381,42 @@ const styles = StyleSheet.create({
   },
   linkValue: {
     fontSize: 15,
-    color: "#8E8E93",
-    marginRight: 4,
+    marginRight: 6,
+    fontWeight: "500",
   },
-  logoutButton: {
+  signOutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    marginTop: 40,
-    marginHorizontal: 20,
+    marginTop: 32,
+    marginHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FF3B30",
+    borderRadius: 14,
+    borderWidth: 1.5,
   },
-  logoutText: {
+  signOutText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#FF3B30",
     marginLeft: 8,
   },
   footer: {
     alignItems: "center",
-    paddingVertical: 40,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  footerDivider: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 16,
   },
   version: {
     fontSize: 13,
-    color: "#8E8E93",
+    fontWeight: "600",
     marginBottom: 4,
   },
   copyright: {
     fontSize: 12,
-    color: "#C7C7CC",
-  },
-  userEmail: {
-    fontSize: 13,
-    color: "#8E8E93",
-    marginTop: 2,
+    fontWeight: "500",
   },
 });

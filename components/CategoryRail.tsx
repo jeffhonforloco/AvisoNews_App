@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { ChevronRight } from "lucide-react-native";
+import { router } from "expo-router";
 import { Article } from "@/types/news";
+import { useTheme } from "@/providers/ThemeProvider";
 import ArticleCard from "./ArticleCard";
+import * as Haptics from "expo-haptics";
 
 interface CategoryRailProps {
   title: string;
@@ -23,8 +26,11 @@ export default function CategoryRail({
   articles,
   color = "#007AFF",
 }: CategoryRailProps) {
+  const { theme } = useTheme();
+
   const handleSeeAll = () => {
-    console.log("Navigate to category:", category);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/(tabs)/categories/${category}`);
   };
 
   return (
@@ -32,17 +38,22 @@ export default function CategoryRail({
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <View style={[styles.titleDot, { backgroundColor: color }]} />
-          <Text style={styles.title}>{title}</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
         </View>
-        <TouchableOpacity style={styles.seeAllButton} onPress={handleSeeAll}>
+        <TouchableOpacity 
+          style={[styles.seeAllButton, { backgroundColor: color + "15" }]} 
+          onPress={handleSeeAll}
+          activeOpacity={0.7}
+        >
           <Text style={[styles.seeAllText, { color }]}>See All</Text>
-          <ChevronRight size={16} color={color} />
+          <ChevronRight size={14} color={color} />
         </TouchableOpacity>
       </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        decelerationRate="fast"
       >
         {articles.map((article, index) => (
           <View
@@ -81,22 +92,25 @@ const styles = StyleSheet.create({
   },
   titleDot: {
     width: 4,
-    height: 20,
+    height: 22,
     borderRadius: 2,
-    marginRight: 10,
+    marginRight: 12,
   },
   title: {
     fontSize: 22,
-    fontWeight: "700",
-    color: "#1C1C1E",
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
   seeAllButton: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   seeAllText: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
     marginRight: 2,
   },
   scrollContent: {

@@ -1,4 +1,4 @@
-export const Colors = {
+export const Colors: Record<ColorScheme, Theme> = {
   light: {
     // Primary
     primary: '#FF6B6B',
@@ -108,5 +108,37 @@ export const Colors = {
   },
 };
 
-export type Theme = typeof Colors.light;
 export type ColorScheme = 'light' | 'dark';
+
+export interface Theme {
+  primary: string;
+  primaryLight: string;
+  primaryDark: string;
+  background: string;
+  backgroundElevated: string;
+  backgroundSecondary: string;
+  text: string;
+  textSecondary: string;
+  textTertiary: string;
+  textQuaternary: string;
+  border: string;
+  borderLight: string;
+  cardBackground: string;
+  cardBorder: string;
+  success: string;
+  warning: string;
+  error: string;
+  info: string;
+  overlay: string;
+  overlayLight: string;
+  gradientStart: string;
+  gradientEnd: string;
+  tabBarBackground: string;
+  tabBarBorder: string;
+  tabBarActive: string;
+  tabBarInactive: string;
+  inputBackground: string;
+  inputBorder: string;
+  inputPlaceholder: string;
+  shadowColor: string;
+}

@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 import { useColorScheme } from "react-native";
 import { Colors, Theme, ColorScheme } from "@/constants/Colors";
 import { usePreferences } from "./PreferencesProvider";
@@ -15,15 +15,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useColorScheme();
   const { preferences } = usePreferences();
 
-  // Use dark mode preference if set, otherwise follow system
-  const colorScheme: ColorScheme = preferences.darkMode
-    ? 'dark'
-    : systemColorScheme === 'dark'
+  const themeValue = useMemo(() => {
+    const colorScheme: ColorScheme = preferences.darkMode
       ? 'dark'
-      : 'light';
+      : (systemColorScheme === 'dark' ? 'dark' : 'light');
 
-  const theme = Colors[colorScheme];
-  const isDark = colorScheme === 'dark';
+    const theme = Colors[colorScheme] ?? Colors.light;
+    const isDark = colorScheme === 'dark';
+
+    return { theme, colorScheme, isDark };
+  }, [preferences.darkMode, systemColorScheme]);
+
+  const { theme, colorScheme, isDark } = themeValue;
 
   return (
     <ThemeContext.Provider value={{ theme, colorScheme, isDark }}>
