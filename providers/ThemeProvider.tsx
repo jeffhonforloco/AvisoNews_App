@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from "react";
 import { useColorScheme } from "react-native";
-import { Colors, Theme, ColorScheme } from "@/constants/colors";
+import { Colors, Theme, ColorScheme } from "@/constants/Colors";
 import { usePreferences } from "./PreferencesProvider";
 
 interface ThemeContextType {
