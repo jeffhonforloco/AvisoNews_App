@@ -1,27 +1,21 @@
 import React from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Linking } from "react-native";
-import { ExternalLink } from "lucide-react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 interface AttributionBarProps {
   sourceName: string;
-  canonicalUrl: string;
+  canonicalUrl?: string; // Made optional since we don't use it anymore
 }
 
-export default function AttributionBar({ sourceName, canonicalUrl }: AttributionBarProps) {
-  const handleOpenSource = () => {
-    Linking.openURL(canonicalUrl);
-  };
-
+export default function AttributionBar({ sourceName }: AttributionBarProps) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.label}>Original Source</Text>
+        <Text style={styles.label}>Source Attribution</Text>
         <Text style={styles.source}>{sourceName}</Text>
+        <Text style={styles.disclaimer}>
+          Content curated and verified by AvisoNews
+        </Text>
       </View>
-      <TouchableOpacity style={styles.button} onPress={handleOpenSource}>
-        <Text style={styles.buttonText}>Read Original</Text>
-        <ExternalLink size={14} color="#007AFF" />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -29,8 +23,6 @@ export default function AttributionBar({ sourceName, canonicalUrl }: Attribution
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     paddingVertical: 16,
     marginTop: 8,
     borderTopWidth: 1,
@@ -44,25 +36,17 @@ const styles = StyleSheet.create({
     color: "#8E8E93",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   source: {
     fontSize: 15,
     fontWeight: "600",
     color: "#1C1C1E",
+    marginBottom: 4,
   },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F2F2F7",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  buttonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#007AFF",
-    marginRight: 4,
+  disclaimer: {
+    fontSize: 12,
+    color: "#8E8E93",
+    fontStyle: "italic",
   },
 });
