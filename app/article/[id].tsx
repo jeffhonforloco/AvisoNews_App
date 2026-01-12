@@ -13,10 +13,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
-import { ArrowLeft, Share2, Bookmark, ExternalLink, Clock } from "lucide-react-native";
+import { ArrowLeft, Share2, Bookmark, Clock } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNews } from "@/providers/NewsProvider";
 import { useBookmarks } from "@/providers/BookmarkProvider";
+import { NewsAggregator } from "@/services/newsAggregator";
 import TldrBox from "@/components/TldrBox";
 import AttributionBar from "@/components/AttributionBar";
 import RelatedArticles from "@/components/RelatedArticles";
@@ -27,6 +28,8 @@ export default function ArticleScreen() {
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [isTogglingBookmark, setIsTogglingBookmark] = useState(false);
+  const [articleContent, setArticleContent] = useState<string>("");
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
   const article = articles.find(a => a.id === id);
   const bookmarked = article ? isBookmarked(article.id) : false;
@@ -36,6 +39,26 @@ export default function ArticleScreen() {
       incrementViewCount(article.id);
     }
   }, [article?.id]);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      if (article?.canonicalUrl && !articleContent) {
+        setIsLoadingContent(true);
+        try {
+          const content = await NewsAggregator.fetchArticleContent(article.canonicalUrl);
+          setArticleContent(content);
+        } catch (error) {
+          console.error("Error fetching article content:", error);
+          // Fallback to excerpt if content fetch fails
+          setArticleContent(article.excerpt);
+        } finally {
+          setIsLoadingContent(false);
+        }
+      }
+    };
+
+    fetchContent();
+  }, [article?.canonicalUrl]);
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 200],
@@ -159,21 +182,21 @@ export default function ArticleScreen() {
           <Text style={styles.excerpt}>{article.excerpt}</Text>
 
           <View style={styles.articleContent}>
-            <Text style={styles.paragraph}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor 
-              incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud 
-              exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-            </Text>
-            <Text style={styles.paragraph}>
-              Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
-              fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in 
-              culpa qui officia deserunt mollit anim id est laborum.
-            </Text>
-            <Text style={styles.paragraph}>
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque 
-              laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi 
-              architecto beatae vitae dicta sunt explicabo.
-            </Text>
+            {isLoadingContent ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading full article...</Text>
+              </View>
+            ) : articleContent ? (
+              articleContent.split('\n\n').map((paragraph, index) => (
+                <Text key={index} style={styles.paragraph}>
+                  {paragraph.trim()}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.paragraph}>
+                {article.excerpt}
+              </Text>
+            )}
           </View>
 
           {article.tags && article.tags.length > 0 && (
@@ -228,7 +251,7 @@ export default function ArticleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FAFAFA",
   },
   header: {
     position: "absolute",
@@ -238,24 +261,32 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   headerGradient: {
-    paddingBottom: 10,
+    paddingBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
   },
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   backButton: {
-    padding: 8,
+    padding: 10,
+    borderRadius: 12,
   },
   headerActions: {
     flexDirection: "row",
+    gap: 4,
   },
   headerAction: {
-    padding: 8,
+    padding: 10,
     marginLeft: 8,
+    borderRadius: 12,
   },
   floatingHeader: {
     position: "absolute",
@@ -279,66 +310,84 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   floatingButtonBg: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 20,
-    padding: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 24,
+    padding: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 0.5,
+    borderColor: "rgba(0, 0, 0, 0.04)",
   },
   scrollView: {
     flex: 1,
   },
   imageContainer: {
     width: "100%",
-    height: 400,
+    height: 420,
     overflow: "hidden",
   },
   heroImage: {
     width: "100%",
     height: "100%",
+    resizeMode: "cover",
   },
   imageOverlay: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: 100,
+    height: 120,
   },
   content: {
-    padding: 20,
-    marginTop: -40,
+    padding: 24,
+    marginTop: -44,
     backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 8,
   },
   categoryBadge: {
     alignSelf: "flex-start",
     backgroundColor: "#FF6B6B",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 18,
+    shadowColor: "#FF6B6B",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   categoryText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1C1C1E",
-    lineHeight: 34,
-    marginBottom: 12,
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#0A0A0A",
+    lineHeight: 40,
+    marginBottom: 16,
+    letterSpacing: -0.5,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
   metaItem: {
     flexDirection: "row",
@@ -346,46 +395,63 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
-    color: "#8E8E93",
-    marginLeft: 4,
+    color: "#6B6B6B",
+    marginLeft: 6,
+    fontWeight: "500",
   },
   metaDot: {
     fontSize: 13,
-    color: "#C7C7CC",
-    marginHorizontal: 8,
+    color: "#D1D1D6",
+    marginHorizontal: 10,
   },
   excerpt: {
-    fontSize: 18,
-    lineHeight: 26,
-    color: "#3C3C43",
-    fontWeight: "500",
-    marginBottom: 24,
+    fontSize: 19,
+    lineHeight: 30,
+    color: "#2C2C2E",
+    fontWeight: "600",
+    marginBottom: 28,
+    letterSpacing: -0.2,
   },
   articleContent: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   paragraph: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 28,
     color: "#1C1C1E",
-    marginBottom: 16,
+    marginBottom: 20,
+    fontWeight: "400",
+    letterSpacing: -0.1,
+  },
+  loadingContainer: {
+    paddingVertical: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    fontSize: 15,
+    color: "#8E8E93",
+    fontStyle: "italic",
+    fontWeight: "500",
   },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 24,
+    marginBottom: 28,
+    gap: 8,
   },
   tag: {
-    backgroundColor: "#F2F2F7",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    marginRight: 8,
-    marginBottom: 8,
+    backgroundColor: "#F5F5F7",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E8E8ED",
   },
   tagText: {
     fontSize: 13,
-    color: "#1C1C1E",
-    fontWeight: "500",
+    color: "#3A3A3C",
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
 });

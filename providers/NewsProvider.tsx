@@ -3,6 +3,8 @@ import createContextHook from "@nkzw/create-context-hook";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Article, Category } from "@/types/news";
 import { NewsAPI } from "@/services/api";
+import { NewsAggregator } from "@/services/newsAggregator";
+import { Analytics } from "@/services/analytics";
 
 interface NewsContextType {
   articles: Article[];
@@ -23,7 +25,21 @@ export const [NewsProvider, useNews] = createContextHook<NewsContextType>(() => 
 
   const articlesQuery = useQuery({
     queryKey: ["articles"],
-    queryFn: () => NewsAPI.getArticles(),
+    queryFn: async () => {
+      const useRealAPIs = process.env.EXPO_PUBLIC_USE_REAL_NEWS_APIS === 'true';
+
+      if (useRealAPIs) {
+        // Aggregate from all news sources
+        const articles = await NewsAggregator.aggregateArticles('general');
+        Analytics.trackEvent('articles_fetched_real_apis', { count: articles.length });
+        return articles;
+      } else {
+        // Fallback to local API/mock data
+        return await NewsAPI.getArticles();
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
   });
 
   const updateArticlesMutation = useMutation({
